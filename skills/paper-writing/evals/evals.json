@@ -1,0 +1,93 @@
+{
+  "skill_name": "paper-writing",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Generate full paper outline from one-liner",
+      "prompt": "I want to write a paper about multi-task reinforcement learning using dynamic task routing. The core idea is to let agents dynamically select which modules to use during execution. I'm targeting ICLR and I have preliminary experiments on 3 continuous control benchmarks. Please generate a complete paper outline with section guidance.",
+      "expected_output": "Complete 7-section outline (Abstract through Conclusion) with recommended structure, key points, and evaluation checklist for each section",
+      "expectations": [
+        "Outline includes all 7 sections (Abstract, Intro, Related Work, Methodology, Experiments, Discussion, Conclusion)",
+        "Each section has recommended structure (subsections or key parts)",
+        "Each section has 3+ key points to cover",
+        "Each section has a purpose statement",
+        "Intro section includes subsections for Hook, Gap Analysis, Core Idea, Contributions, and Organization",
+        "Related Work section shows how to organize by research direction",
+        "Experiments section includes Setup, Main Results, Ablation, and Analysis",
+        "Total estimated page count is reasonable (8-10 pages for method paper)",
+        "Citations expectations are provided (e.g., 10 for intro, 20 for related work)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Generate detailed Introduction section with examples",
+      "prompt": "Generate a detailed Introduction section draft for a paper about reward models for math problem solving. The paper proposes a new approach to training reward models that better captures mathematical correctness. We're comparing against existing reward model training methods. Please provide sample text for each subsection (Hook, Background, Gap, Our Idea, Contributions, Paper Organization), along with writing guidance.",
+      "expected_output": "Detailed Introduction draft with sample text for each subsection, citations marked with [CITE-X], key points to cover, and common mistakes to avoid",
+      "expectations": [
+        "Introduction has 5 subsections: Hook, Background, Gap Analysis, Core Idea, Contributions, Paper Organization",
+        "Each subsection includes sample/template text",
+        "Citations are marked with [CITE-1], [CITE-2], etc.",
+        "Hook includes a specific example or problem statement",
+        "Gap Analysis identifies 2-3 limitations of existing approaches",
+        "Core Idea is expressed in clear, non-technical language",
+        "Contributions are numbered and specific (not vague)",
+        "Paper Organization section lists the main sections",
+        "Common mistakes for Introduction are listed (e.g., 'too much detail', 'unclear gap')",
+        "Quality checklist is provided for evaluating Introduction"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Provide writing guidance for Related Work section",
+      "prompt": "I need help structuring the Related Work section for my paper on multi-agent reinforcement learning. My paper proposes a new coordination mechanism. The key related areas are: (1) Communication protocols in MARL, (2) Centralized training with decentralized execution, (3) Attention mechanisms for agent interaction. How should I organize and what should I include?",
+      "expected_output": "Structured guidance for organizing Related Work into 3 research directions, with recommendations for papers to discuss, how to position each direction relative to the proposed work, and evaluation criteria",
+      "expectations": [
+        "Recommends organizing by research direction (not chronologically)",
+        "Suggests 3-5 representative papers per direction",
+        "Provides guidance on how to position each direction relative to proposed work",
+        "Includes sample structure for each research direction",
+        "Recommends number of citations (e.g., 20-30 for Related Work)",
+        "Common mistakes in Related Work are listed",
+        "Checklist for evaluating Related Work is provided",
+        "Guidance includes how to avoid strawman criticism of prior work",
+        "Specific language suggestions for positioning ('differs in that...', 'complements prior work...')"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Generate Methodology section with formal definitions",
+      "prompt": "Help me structure the Methodology section for a paper on reinforcement learning with multi-task routing. I need to define the problem formally, explain my framework, and provide algorithm details. The key technical contribution is a learned routing network that selects task-specific modules. Please provide a template with placeholders for my specific technical content.",
+      "expected_output": "Structured Methodology section template with Problem Definition, Framework Overview, Technical Details, and Training Procedure, including where to put equations, algorithms, and key technical details",
+      "expectations": [
+        "Methodology section has 4 subsections: Problem Definition, Framework Overview, Technical Details, Training Procedure",
+        "Problem Definition includes symbol definitions and formal objective",
+        "Framework Overview provides high-level intuition before technical details",
+        "Technical Details section shows how to structure complex components",
+        "Sample equation/pseudocode formatting provided",
+        "Guidance on when to use tables vs text for symbol definitions",
+        "Algorithm pseudocode template provided (or example)",
+        "Checklist for Methodology quality is included",
+        "Guidance on reproduceability (what details are needed?)",
+        "Explanation of notation consistency requirements"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Generate Experiments section framework",
+      "prompt": "I need to structure my Experiments section. I have results on 5 continuous control benchmarks comparing against 3 baselines. I also have an ablation study and some visualization of learned behaviors. Walk me through the structure and what to include in each part.",
+      "expected_output": "Structured Experiments section with subsections for Setup, Main Results, Ablation, and Analysis, with guidance on what belongs in each part and how to present results",
+      "expectations": [
+        "Experiments section has 4 subsections: Setup, Main Results, Ablation, Analysis",
+        "Setup subsection includes guidance on describing environments, baselines, metrics, and implementation details",
+        "Setup guidance clarifies what details are reproducibility-critical",
+        "Main Results section explains how to structure tables and narrative interpretation",
+        "Ablation subsection explains what to vary and how to interpret results",
+        "Analysis section provides options (case studies, visualizations, failure modes)",
+        "Guidance on error bars and statistical significance",
+        "Recommendations for number of runs (3+) and random seeds",
+        "Checklist for experimental rigor provided",
+        "Examples of how to quantify results (percentages, not 'significant')"
+      ]
+    }
+  ]
+}

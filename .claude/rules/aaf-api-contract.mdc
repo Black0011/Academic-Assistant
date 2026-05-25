@@ -1,0 +1,83 @@
+---
+description: API contract rules — versioning, schemas, SSE, errors, OpenAPI
+globs:
+  - "backend/api/**/*.py"
+  - "backend/main.py"
+alwaysApply: true
+---
+
+# AAF · API Contract Rule (MANDATORY)
+
+## Versioning
+
+- All routes live under `/api/v1/`. Breaking changes go to `/api/v2/` — never mutate `/v1`.
+- Health endpoints (`/api/v1/health`, `/api/v1/health/ready`) are the only unauthenticated ones.
+
+## Routers
+
+- One router per resource: `backend/api/routers/<resource>.py`.
+- `APIRouter(prefix="/<resource>", tags=["<resource>"])`.
+- Every new router must be registered in `backend/api/__init__.py`.
+
+## Schemas
+
+- Request schema: `<ResourceAction>Request`. Response schema: `<ResourceAction>Response`.
+- Located in `backend/api/schemas/<resource>.py`.
+- Request models MUST set `model_config = ConfigDict(extra="forbid")`.
+- Never return SQLAlchemy models; always a response schema.
+- All datetimes are UTC ISO 8601 with `Z` suffix.
+
+## Async
+
+- Every route handler is `async def`. Long tasks (> 1s) enqueue to ARQ and return 202 + `task_id`. Never block the request thread.
+
+## Errors
+
+- Raise `AAFError` subclasses. The global exception handler converts them to RFC 7807 Problem Details JSON.
+- Never return raw dict `{"error": ...}` from a handler.
+- Status codes:
+  - 400 bad request / 401 unauth / 403 forbidden / 404 not found / 409 conflict / 422 validation
+  - 429 rate limited / 500 server error / 502 upstream / 503 busy / 504 timeout
+
+## SSE
+
+- Endpoint pattern: `GET /api/v1/tasks/{id}/stream`.
+- Use `sse_starlette.EventSourceResponse`.
+- Event schema in `backend/api/schemas/events.py`; each event type has a Pydantic model.
+- Heartbeat event `ping` every 15s.
+- Close stream on `task.finished | task.error | task.cancelled`.
+
+## OpenAPI
+
+- `summary="..."` on every route (one line, used in the auto-generated Swagger).
+- At least one example per response model (`json_schema_extra`).
+- Tags match resource names exactly.
+
+## Pagination
+
+- **Cursor-based** only. Request: `?limit=20&cursor=<opaque>`. Response: `{ items, next_cursor }`.
+- No page-number pagination anywhere.
+
+## Auth
+
+- Use `Depends(get_current_user)` unless explicitly public.
+- Admin actions: `Depends(require_admin)`.
+- `AUTH_DISABLED=true` makes `get_current_user` return `User(id="anonymous")` — tests rely on this.
+
+## File uploads
+
+- Use `UploadFile` + stream to MinIO via `backend/core/storage/minio_client.py`.
+- Max size configurable via `AAF_MAX_UPLOAD_MB` (default 50).
+
+## Rate limits (best effort)
+
+- Per-user / endpoint rate limits via a simple Redis INCR pattern (`backend/api/ratelimit.py`). Not a hard wall — just a guard.
+
+## Checklist for every new endpoint
+
+- [ ] Schemas live in `backend/api/schemas/<resource>.py`
+- [ ] Router registered in `backend/api/__init__.py`
+- [ ] `summary` + at least one OpenAPI example
+- [ ] Error paths raise `AAFError`
+- [ ] At least one integration test hitting the route
+- [ ] If returning a task id, SSE stream subscription works (integration-tested)

@@ -1,0 +1,96 @@
+% sections/appendix.tex
+
+\section{Hyperparameter Settings}
+\label{sec:hyperparams}
+
+Table~\ref{tab:hyperparams} lists all hyperparameters. Runtime Skill statistics use the following notation: $u_k$ (retrieval count), $G_k$ (cumulative counterfactual gain), $\hat{g}_k = G_k/(u_k + \epsilon_{\text{cf}})$ (normalized gain rate), and $\ell_k^{\min}$ (minimum source evidence level).
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Complete hyperparameter listing for SQLSkill.}
+  \label{tab:hyperparams}
+  \begin{tabular}{llrl}
+    \toprule
+    \textbf{Symbol} & \textbf{Meaning} & \textbf{Default} & \textbf{Category} \\
+    \midrule
+    \multicolumn{4}{l}{\emph{Core method parameters (discussed in main text)}} \\
+    $N_{\text{recur}}$ & Recurrence count for $L_0 {\to} L_1$ & 3 & Evidence \\
+    $N_{\text{distill}}^{\text{exp}}$ & Min $L_1$+ Cases for exploratory distill. & 3 & Distillation \\
+    $N_{\text{distill}}^{\text{gov}}$ & Min $L_2$+ Cases for governance distill. & 3 & Distillation \\
+    $\theta_{\text{gap}}$ & Schema coverage gap threshold & 0.5 & Retrieval \\
+    $\theta_{\text{conflict}}$ & Conflict detection similarity & 0.7 & Routing \\
+    $\epsilon_{\text{cf}}$ & Cold-start smoothing for $\hat{g}_k$ & 1 & Credit assign. \\
+    \midrule
+    \multicolumn{4}{l}{\emph{Engineering parameters (implementation details)}} \\
+    $K_{\text{skill}}$ & Max Skills retrieved per query & 3 & Retrieval \\
+    $\theta_{\text{merge}}$ & Evolver merge similarity & 0.85 & Evolver \\
+    $N_{\text{cold}}$ & Cold-start protection period & 5 & Evolver \\
+    $N_{\text{evolve}}$ & Evolver trigger interval (queries) & 100 & Evolver \\
+    $M_{\text{max}}$ & Max Skill Bank capacity & 200 & Evolver \\
+    $T_{\text{ehr}}$ & EHR expiration (queries) & 50 & Distillation \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Error Signature Example}
+\label{sec:error_sig_example}
+
+Below is an example of the error archiving output for a failed query ``calculate monthly sales growth rate per product category'' on an e-commerce database:
+
+\begin{lstlisting}[language=,caption={Example error archiving output.}]
+error_vector: [0, 1, 1, 0]
+  # Field activated, Relation activated
+primary_dimension: Relation
+
+z_field(q):
+  pattern_label: wrong_measure_field
+  schema_element: orders.total_amount
+    (should be order_items.unit_price * qty)
+  ast_feature: SELECT_aggregate_on_wrong_column
+
+z_relation(q):
+  pattern_label: missing_join
+  schema_element: orders -> products
+  ast_feature: no_intermediate_table
+
+diagnostic_tags:
+  [aggregation_error, missing_bridge_table]
+root_cause: "Directly aggregated on orders table,
+  missing order_items bridge table, causing
+  wrong measure field and incomplete JOIN path"
+\end{lstlisting}
+
+This Case is simultaneously counted toward both the $(D_{\text{field}}, z_{\text{field}})$ and $(D_{\text{relation}}, z_{\text{relation}})$ cluster counters for recurrence detection.
+
+\section{Skill Document Example}
+\label{sec:skill_example}
+
+Below is an example of a distilled positive Skill document stored in the Skill Bank:
+
+\begin{lstlisting}[language=,caption={Example Skill document (positive).}]
+Skill ID: SK-047
+Polarity: +
+Trigger: "query requires period-over-period
+  growth rate calculation"
+Workflow:
+  1. Identify time column and metric column
+  2. Use LAG() window function with
+     PARTITION BY entity ORDER BY time_col
+  3. Compute growth as
+     (current - previous) / previous * 100
+  4. Handle NULL in first period with COALESCE
+Context:
+  query_types: [time_series, bi_metric]
+  error_dimensions: [Field, Filtering]
+  schema_requirement: timestamp/date column
+Evidence: [Case-112, Case-156, Case-203]
+Distillation Source:
+  min_case_level: L2
+  track: governance
+Usage Count: 23
+CF Gain Sum: 14
+CF Gain Rate: 0.58
+\end{lstlisting}
+
+\input{sections/checklist}

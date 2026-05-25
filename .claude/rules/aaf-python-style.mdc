@@ -1,0 +1,63 @@
+---
+description: Mandatory Python style and safety rules for ANY .py file in the AAF repository
+globs:
+  - "backend/**/*.py"
+  - "cli/**/*.py"
+  - "sdk/python/**/*.py"
+  - "scripts/**/*.py"
+alwaysApply: true
+---
+
+# AAF · Python Style & Safety Rule (MANDATORY)
+
+These are *rules*, not suggestions. Violating them should cause a failing review.
+
+## Types & modernity
+
+- **Target Python 3.11+**. Use `|`-unions, `Self`, `match`, `asyncio.TaskGroup`.
+- **Type hints on every function signature** (including `-> None`). Do not use `Any` — use `object` or generics. `Any` is allowed only at validated external boundaries (LLM SDK return types) with an inline comment.
+- Pydantic models MUST declare `model_config = ConfigDict(extra="forbid")` for request/response bodies.
+
+## I/O
+
+- All I/O is **async**. Use `async def` + `await`. No `requests`; use `httpx.AsyncClient`.
+- Never block the event loop. Use `asyncio.to_thread` for unavoidable sync calls > 10 ms.
+- No file I/O at import time.
+
+## Logging
+
+- Use `structlog.get_logger(__name__)`. **Never `print`.** (CI greps for it.)
+- Log events as key-value: `log.info("skill.loaded", name=s.name)`. Don't f-string the message.
+
+## Errors
+
+- Raise `backend.core.errors.AAFError` subclasses. Never raise bare `Exception`.
+- Never swallow exceptions silently; at minimum `log.exception(...)` before re-raising or converting.
+
+## Dependencies
+
+- Only the libraries already in `pyproject.toml` are allowed unless a PR justifies an addition.
+- **Banned**: `langchain`, `langgraph`, `crewai`, `autogen`, `pydantic==1.*`, `requests` (non-test code).
+
+## Style (enforced by ruff)
+
+- Line length ≤ 100.
+- Imports: stdlib / third-party / first-party (`backend.*`), blank line between groups.
+- f-strings preferred over `.format`/`%`.
+- Use `@dataclass(slots=True, frozen=True)` for value objects.
+
+## Layering
+
+- `backend/core/` may NOT import from `backend/agents/`, `backend/workflows/`, or `backend/api/`.
+- `backend/api/` may import from `backend/agents/`, `backend/workflows/`, `backend/core/` but NOT vice versa.
+- `backend/tests/` can import anything.
+
+## Tests
+
+- Every new module in `backend/core/` or `backend/agents/` has a unit test at `backend/tests/unit/<module_path>.py`.
+- Integration tests use `MockLLMProvider`; no real-network tests in CI.
+
+## Enforcement
+
+- `make lint` (ruff) + `make typecheck` (mypy) must pass.
+- Pre-commit hook runs `ruff format --check` and `ruff check`.

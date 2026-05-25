@@ -1,0 +1,100 @@
+{
+  "skill_name": "rebuttal-writer",
+  "evals": [
+    {
+      "id": "rebuttal-eval-1",
+      "name": "Basic rebuttal generation from simple feedback",
+      "prompt": "Generate a rebuttal letter to these reviewer comments:\n1. (R1): 'Your method is not sufficiently novel compared to the baseline.' (severity: major)\n2. (R2): 'Table formatting could be improved' (severity: minor)",
+      "expected_output": {
+        "contains": [
+          "Opening Statement",
+          "Reviewer",
+          "Comment",
+          "Assessment",
+          "Response",
+          "Summary of Changes",
+          "Closing"
+        ]
+      },
+      "expectations": [
+        "Generated rebuttal has professional structure",
+        "Responds to both major and minor comments",
+        "Uses appropriate response strategies (defend for novelty, concede for formatting)",
+        "Output is in markdown format"
+      ]
+    },
+    {
+      "id": "rebuttal-eval-2",
+      "name": "Strategy selection: Clarification vs. Defense vs. Concession",
+      "prompt": "For each comment, identify whether we should use Clarify, Defend, or Concede strategy:\n- R1: 'You claim method handles multi-task RL, but I don't see how it differs from X approach.'\n- R2: 'Baseline comparison is incomplete - missing result on dataset Y.'\n- R3: 'Notation in Eq. 3 is inconsistent with Section 2.'",
+      "expected_output": {
+        "contains": [
+          "clarif",
+          "defend",
+          "concede"
+        ]
+      },
+      "expectations": [
+        "Correctly identifies R1 needs Clarify (miscommunication)",
+        "Correctly identifies R2 needs Defend (we have evidence) or Concede (we're missing it)",
+        "Correctly identifies R3 needs Concede (valid formatting issue)"
+      ]
+    },
+    {
+      "id": "rebuttal-eval-3",
+      "name": "Multi-reviewer coordination and deduplication",
+      "prompt": "Combine these duplicate comments into single responses:\n- R1: 'Baseline X should be included for comparison'\n- R2: 'Why no comparison with baseline X?'\n- R3: 'Missing baseline X results'",
+      "expected_output": {
+        "contains": [
+          "One response",
+          "deduplicated",
+          "combined"
+        ]
+      },
+      "expectations": [
+        "Recognizes all three comments address the same issue",
+        "Groups them under single topic",
+        "Generates one unified response",
+        "Notes that same point was raised by multiple reviewers"
+      ]
+    },
+    {
+      "id": "rebuttal-eval-4",
+      "name": "Incorporate revised paper changes into response",
+      "prompt": "Generate response to 'Methodology section is unclear' given that:\n- Original issue: 'Algorithm 1 had unclear notation'\n- Changes made: 'Added Algorithm 1 with detailed pseudocode and notation table'\n- Paper excerpt: 'Algorithm 1 shows our approach with clear notation'",
+      "expected_output": {
+        "contains": [
+          "Algorithm 1",
+          "notation",
+          "clarified"
+        ]
+      },
+      "expectations": [
+        "References specific changes made to address concern",
+        "Points to Algorithm 1 as evidence",
+        "Uses Clarify or Concede strategy (not Defend)",
+        "Shows confidence in revised manuscript"
+      ]
+    },
+    {
+      "id": "rebuttal-eval-5",
+      "name": "Professional tone and diplomacy",
+      "prompt": "Respond professionally to this critical comment:\n'Your paper is poorly written, methodology is confusing, and results don't support the claims.'",
+      "expected_output": {
+        "contains": [
+          "appreciate",
+          "grateful",
+          "addressed",
+          "strengthened"
+        ]
+      },
+      "expectations": [
+        "Response maintains respect despite harsh tone",
+        "Avoids defensive language",
+        "Acknowledges valid concerns while maintaining confidence",
+        "Shows specific improvements made",
+        "Professional and collaborative in tone"
+      ]
+    }
+  ]
+}

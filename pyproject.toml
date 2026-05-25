@@ -1,0 +1,129 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "academic-agent-framework"
+version = "0.1.0"
+description = "LLM-agnostic academic agent framework with a self-hosted Skill runtime."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "AAF Contributors" }]
+keywords = ["agent", "academic", "llm", "skill", "research"]
+
+dependencies = [
+    # Web / async
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "httpx>=0.27",
+    "python-frontmatter>=1.1",
+    "pyyaml>=6.0",
+    "arq>=0.26",
+    "redis>=5.0",
+    "sse-starlette>=2.1",
+
+    # DB
+    "sqlalchemy[asyncio]>=2.0",
+    "alembic>=1.13",
+    "asyncpg>=0.30",
+    "aiosqlite>=0.20",
+
+    # Tools
+    "feedparser>=6.0",
+    "pdfplumber>=0.11",
+    "pypdf>=5.0",
+    "requests>=2.32",
+    "requests-cache>=1.2",
+    # MCP client — lets AAF consume any Model-Context-Protocol server
+    # over stdio or SSE. Tools discovered from a server are registered
+    # under namespaced names (mcp__<server>__<tool>) into the same
+    # ToolRegistry workflows already use, so workflows don't need to
+    # know whether a tool is local or remote.
+    "mcp>=1.0",
+
+    # Object storage
+    "minio>=7.2",
+
+    # Utilities
+    "tenacity>=9.0",
+    "structlog>=24.4",
+    "jinja2>=3.1",
+    # Use the host OS trust store (macOS Keychain / Windows CA store /
+    # Linux system roots) for outbound HTTPS, so corporate or VPN MITM
+    # certificates installed at the OS level Just Work.
+    "truststore>=0.10",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "respx>=0.21",
+    "fakeredis>=2.20",
+    "types-pyyaml",
+    "types-requests",
+]
+memory = [
+    # Vector store. Installed when deploying the memory subsystem (M2).
+    # Has platform-specific wheels; if your platform lacks a wheel, use
+    # `uv sync` without this extra and run a local embedding store instead.
+    "chromadb>=0.5",
+]
+offline = [
+    # Local sentence-transformers model for the offline embedding
+    # backend (AAF_EMBEDDING_BACKEND=local). Pulls torch as a
+    # transitive dep — only install on machines where you actually want
+    # the local embedder to avoid the >1 GB download.
+    "sentence-transformers>=3.0",
+]
+latex = [
+    # tectonic is a system binary; pin nothing here
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# L1 skill scripts (Python files inside skills/) run inside isolated
+# subprocesses managed by the Skill Host; they have their own lifecycle
+# and dependency profile and are NOT imported by the backend. Treat them
+# as black-box artefacts here and lint them in their own packaging.
+# `sdk/` is its own package with its own pyproject.toml and ruff config.
+extend-exclude = ["skills", "sdk"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "RUF"]
+ignore = [
+    "E501",  # line length (ruff format handles it)
+    "B008",  # function call in default argument — common for FastAPI Depends
+    "B904",  # raise-from — we explicitly decide when to use it
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/**/*.py" = ["E402", "F401", "F841", "B011"]
+"scripts/**/*.py"       = ["E402"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+strict_optional = true
+warn_unused_ignores = true
+packages = ["backend"]
+ignore_missing_imports = true
+exclude = ["^sdk/", "^skills/"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+pythonpath = ["."]

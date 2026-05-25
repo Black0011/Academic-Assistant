@@ -1,0 +1,50 @@
+# Keep the docker build context lean. Anything not needed by the runtime
+# is excluded so cache invalidation is precise and image layers stay slim.
+
+# Python / venv
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.uv-cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Tests & tooling
+backend/tests/
+backend/**/__pycache__/
+
+# Node / frontend (frontend has its own image)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Local data
+data/
+backups/
+*.sqlite*
+*.db
+
+# OS / IDE
+.git/
+.github/
+.githooks/
+.idea/
+.vscode/
+.cursor/
+.DS_Store
+
+# Docs / assets not needed at runtime
+docs/
+*.png
+*.jpg
+*.jpeg
+
+# Secrets
+.env
+.env.*
+!.env.example
+deploy/.env

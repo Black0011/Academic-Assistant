@@ -1,0 +1,36 @@
+id: c3d4e5f6a7b8
+name: "benchmark-environment survey for multi-task RL"
+description: >-
+  针对"多任务 RL 实验环境与 benchmark"的专项调研策略。
+  当用户已有一个环境（如 Meta-World）并需要更多验证环境时，
+  按算力需求梯度搜索：极低算力（grid/game）→中等算力（MuJoCo）→高算力（GPU 加速）。
+  特别关注用户的算力约束，优先推荐低成本方案。
+trigger_pattern: "环境, benchmark, 实验环境, 测试环境, 数据集, Meta-World替代, 多任务环境, RL环境, environment, testbed, evaluation benchmark"
+strategy:
+  planning_hints: >-
+    1. 先确认用户已有环境和算力约束；
+    2. 按算力梯度组织搜索：CPU-only → 单GPU → 多GPU；
+    3. 关注环境的任务数量、观察/动作空间维度、训练速度（FPS）；
+    4. 区分"多任务"（同时学多个任务）和"持续学习"（顺序学新任务）的评测需求；
+    5. 搜索关键词组合按域分：gridworld、game-based、robotics、locomotion。
+  search_tips: >-
+    有效关键词组合：
+    - "multi-task RL benchmark" + "lightweight" / "low compute"
+    - "continual RL benchmark" + 具体环境名（ContinualWorld, CORA）
+    - "procedural generation RL benchmark"（Procgen, XLand）
+    - "GPU-accelerated RL" + "multi-task"（IsaacGym, MTBench）
+    - "massively multitask RL"（MMBench, Newt）
+    - "context-adaptive RL"（CARL）
+    特别注意搜索 Farama Foundation 维护的标准化环境。
+  evaluation_criteria: >-
+    高质量标准：
+    - 覆盖至少 3 个算力层级的环境
+    - 每个环境标注任务数、观察空间、FPS 等关键指标
+    - 明确指出与用户已有环境（Meta-World）的互补性
+    - 对持续学习场景单独标注适用的 benchmark
+    - 结果按算力排序，方便用户选择
+source_query: "多任务RL环境与benchmark调研"
+source_verdict: "pass"
+success_count: 1
+created_at: "2026-03-18T00:00:00+00:00"
+updated_at: "2026-03-18T00:00:00+00:00"

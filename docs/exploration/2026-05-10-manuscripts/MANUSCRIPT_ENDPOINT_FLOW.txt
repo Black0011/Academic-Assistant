@@ -1,0 +1,145 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    GET /api/manuscripts/{id}/tree FLOW                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    Frontend Request
+          │
+          │ GET /api/manuscripts/ms_12345/tree?include_hash=false
+          ▼
+    ┌─────────────────────────────────────────────┐
+    │ routers/manuscripts.py:501-520              │
+    │ get_bundle_tree()                           │
+    │                                             │
+    │ - Validates bundle exists                   │
+    │ - Calls storage.list_tree()                 │
+    └─────────────────────────────────────────────┘
+          │
+          ▼
+    ┌─────────────────────────────────────────────┐
+    │ bundle_storage.py:282-344                   │
+    │ async def list_tree()                       │
+    │                                             │
+    │ - Walks physical_root via os.walk()         │
+    │ - Filters ignore dirs/files                 │
+    │ - Builds ManuscriptFile for each file       │
+    │ - Returns BundleManifest (flat)             │
+    └─────────────────────────────────────────────┘
+          │
+          ▼
+    Backend Response: BundleManifest
+    ┌─────────────────────────────────────────────────────────┐
+    │ {                                                       │
+    │   "manuscript_id": "ms_12345",                          │
+    │   "layout": "bundle",                                   │
+    │   "link_mode": false,                                   │
+    │   "file_count": 3,                                      │
+    │   "total_size": 514524,                                 │
+    │   "files": [                                            │
+    │     {                                                   │
+    │       "path": "main.tex",           ← POSIX relative    │
+    │       "size": 2500,                                     │
+    │       "mime": "text/plain",                             │
+    │       "is_text": true,                                  │
+    │       "sha256": null,                                   │
+    │       "modified_at": "2026-05-10T16:00:00Z"             │
+    │     },                                                  │
+    │     {                                                   │
+    │       "path": "sections/intro.md",  ← DIR IN PATH!      │
+    │       "size": 1024,                                     │
+    │       "mime": "text/markdown",                          │
+    │       "is_text": true,                                  │
+    │       "sha256": null,                                   │
+    │       "modified_at": "2026-05-10T15:30:45Z"             │
+    │     },                                                  │
+    │     {                                                   │
+    │       "path": "figures/plot.png",   ← NESTED PATH       │
+    │       "size": 512000,                                   │
+    │       "mime": "image/png",                              │
+    │       "is_text": false,                                 │
+    │       "sha256": null,                                   │
+    │       "modified_at": "2026-05-10T14:20:15Z"             │
+    │     }                                                   │
+    │   ]                                                     │
+    │ }                                                       │
+    └─────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    DELETE /api/manuscripts/{id} FLOW                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    Frontend Request
+          │
+          │ DELETE /api/manuscripts/ms_12345
+          ▼
+    ┌─────────────────────────────────────────────────────────┐
+    │ routers/manuscripts.py:213-237                          │
+    │ delete_manuscript()                                     │
+    │                                                         │
+    │ 1. Fetch manuscript record from DB                      │
+    │ 2. Delete DB record via store.delete()                  │
+    │ 3. Check: is layout="bundle"?                           │
+    └─────────────────────────────────────────────────────────┘
+          │
+          ├─── NO (single layout) ──→ Return 204 (DB only deleted)
+          │
+          ├─── YES ──→ Check bundle_link_path
+          │           │
+          │           ├─── NONE (copy mode) ──┐
+          │           │                        │
+          │           └─── SET (link mode)   │
+          │                                   │
+          ▼                                   ▼
+    ┌──────────────────────────────────────────────────────────┐
+    │ bundle_storage.py:201-225                                │
+    │ async def remove_owned()                                 │
+    │                                                          │
+    │ COPY MODE:                                               │
+    │ - Resolves: {root}/{id}/work                             │
+    │ - Calls: shutil.rmtree() → ✅ DELETED                    │
+    │                                                          │
+    │ LINK MODE:                                               │
+    │ - Checks: is_link_mode(manuscript)                       │
+    │ - Returns early: ⚠️ NO-OP (user dir untouched)           │
+    └──────────────────────────────────────────────────────────┘
+          │
+          ▼
+    Return 204 No Content
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         KEY PATH EXAMPLES                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Input: os.walk() from /home/user/.aaf/manuscripts/ms_12345/work/
+       └── main.tex
+       └── sections/
+           └── intro.md
+           └── methodology.md
+       └── figures/
+           └── plot.png
+
+Output: ManuscriptFile paths (via .as_posix(), line 315):
+    ✓ "main.tex"
+    ✓ "sections/intro.md"
+    ✓ "sections/methodology.md"
+    ✓ "figures/plot.png"
+
+    ✗ "sections" (directories NOT returned)
+    ✗ "figures"   (only files in list)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                 IGNORE PATTERNS (bundle_storage.py:67-70)                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+DEFAULT_IGNORE_DIRS = {
+    ".git", ".svn", ".hg", "__pycache__", "node_modules", ".venv", ".idea", ".vscode"
+}
+
+DEFAULT_IGNORE_FILES = {
+    ".DS_Store", "Thumbs.db"
+}
+
+→ These are filtered UNLESS include_hidden=true
+

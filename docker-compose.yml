@@ -1,0 +1,143 @@
+# Academic Agent Framework — single-machine private deployment.
+#
+# Usage:
+#   cp .env.example .env          # fill in AAF_SECRET_KEY + at least one LLM key
+#   docker compose up -d --build  # builds aaf-backend + aaf-web on first run
+#   docker compose ps             # 5 services: backend, worker, frontend, postgres, redis
+#   open http://localhost:8080
+#
+# Services:
+#   - frontend  Nginx + SPA + reverse proxy for /api/  (the only externally
+#               exposed service)
+#   - backend   FastAPI / uvicorn (8000, internal)
+#   - worker    Same image as backend, runs `arq …WorkerSettings`
+#   - postgres  Persistent DB for tasks / manuscripts / sessions
+#   - redis     ARQ queue + session store
+#
+# MinIO is gated behind the `storage` profile — opt in only when you wire
+# external object storage. Local data lives under ./data/ by default.
+
+name: aaf
+
+x-backend-image: &backend-image
+  build:
+    context: .
+    dockerfile: deploy/backend.Dockerfile
+  image: aaf-backend:latest
+  env_file: .env
+  environment:
+    AAF_ENV: production
+    AAF_WORKDIR: /data
+    DATABASE_URL: postgresql+asyncpg://aaf:${POSTGRES_PASSWORD:-aaf}@postgres:5432/aaf
+    REDIS_URL: redis://redis:6379/0
+    AAF_TASK_QUEUE_BACKEND: arq
+    AAF_TASK_STORE_BACKEND: sql
+    USERS_DIR: /data/users
+    CHROMA_PERSIST_DIR: /data/chroma
+    MEMORY_KNOWLEDGE_DIR: /data/knowledge
+    MEMORY_SKILLS_DIR: /data/skills
+    AAF_PROPOSALS_DIR: /data/proposals       # M8.1 — yaml-backed proposal store
+  volumes:
+    - ./skills:/app/skills:ro
+    - ./rules:/app/rules:ro
+    - ./data:/data
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis:    { condition: service_healthy }
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aaf
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aaf}
+      POSTGRES_DB: aaf
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aaf -d aaf"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    expose:
+      - "5432"
+
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    expose:
+      - "6379"
+
+  backend:
+    <<: *backend-image
+    command:
+      - uvicorn
+      - backend.app:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - "*"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    expose:
+      - "8000"
+
+  worker:
+    <<: *backend-image
+    command: ["arq", "backend.workers.arq_worker.WorkerSettings"]
+    # The worker doesn't expose health endpoints; restart-on-crash is
+    # enough — ARQ logs go to stdout and compose surfaces them.
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/frontend.Dockerfile
+    image: aaf-web:latest
+    restart: unless-stopped
+    depends_on:
+      backend: { condition: service_healthy }
+    ports:
+      - "${AAF_HTTP_PORT:-8080}:80"
+
+  # Optional object storage — enable with `--profile storage`.
+  minio:
+    profiles: ["storage"]
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-aafadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-aafadminsecret}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

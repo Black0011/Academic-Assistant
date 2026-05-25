@@ -1,0 +1,74 @@
+{
+  "skill_name": "paper-revision",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Analyze draft paper and identify P1 problems",
+      "prompt": "I have a draft paper on 'Dynamic Routing for Multi-Task RL'. The Introduction is 500 words with background material in the first 2 paragraphs. The Related Work section (6 pages) discusses many routing design choices that also appear in Methodology. The core problem doesn't become clear until paragraph 3. Please analyze this draft and identify the main critical (P1) problems that affect the core contribution.",
+      "expected_output": "Structured analysis identifying at least 3 critical problems with specific locations and reasons",
+      "expectations": [
+        "Identifies structural problem: background too long / core problem delayed",
+        "Identifies problem: Related Work and Methodology duplication",
+        "Provides specific locations (paragraph numbers or section names)",
+        "Classifies problems by severity (P1, P2, P3)",
+        "Explains why each problem affects the paper's strength",
+        "Suggests a priority-ordered list of revisions"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Generate section-by-section revision guidance with before/after examples",
+      "prompt": "Generate detailed revision guidance for the Introduction section of a multi-task RL paper. The current introduction: (1) opens with generic RL background, (2) discusses multi-task learning generally, (3) mentions task interference without data support, (4) briefly describes the authors' solution. It's 500 words total. Provide specific revision recommendations with before/after text snippets for at least 3 problems.",
+      "expected_output": "Detailed guidance for Introduction section including specific problems, before/after text, and explanations",
+      "expectations": [
+        "At least 3 specific problems identified for Introduction",
+        "Each problem has 'before text' and 'after text' snippets",
+        "Each recommendation includes explanation of why the change helps",
+        "Provides expected impact (e.g., '30% word reduction, clearer positioning')",
+        "Uses concrete problem types (Structural, Evidential, Clarity, etc.)",
+        "Includes severity levels (P1, P2, P3)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Analyze evidence gaps and citation needs in paper",
+      "prompt": "Review a draft paper on multi-task RL that makes these claims: 'Task interference causes significant performance degradation', 'Our method is 45% faster than prior work', 'Parameter sharing hurts accuracy in diverse tasks'. None of these claims have supporting data or citations. Identify the evidence gaps and suggest what evidence or citations would strengthen each claim.",
+      "expected_output": "Analysis of evidence gaps with specific suggestions for how to support each claim",
+      "expectations": [
+        "Identifies at least 3 claims lacking evidence or citation",
+        "For each gap, specifies what type of evidence is needed (data, citation, experiment result)",
+        "Suggests specific improvements (e.g., 'add citation [CITE-Park2020]' or 'add experiment result showing X%')",
+        "Prioritizes gaps by impact on paper credibility",
+        "Distinguishes between factual claims (need citation) and quantitative claims (need data)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Provide writing quality improvements for clarity and style",
+      "prompt": "A draft paper has these issues: (1) Passive voice dominates: 'The method was evaluated on...', 'Results were analyzed by...'. (2) Jargon overload: 'We employ a gating mechanism for policy parameterization with task-conditioned feature extraction'. (3) Vague quantifiers: 'Many approaches use multi-task learning', 'Previous work has limitations'. (4) Missing transitions between paragraphs. Generate specific before/after improvements for all 4 issues with explanations.",
+      "expected_output": "Specific writing improvements with before/after examples for multiple clarity and style issues",
+      "expectations": [
+        "Addresses passive voice problem with active voice alternatives",
+        "Simplifies jargon-heavy sentences without losing technical meaning",
+        "Replaces vague quantifiers with specific counts or citations",
+        "Adds transition sentences or connectors between paragraphs",
+        "Provides 3-5 concrete before/after pairs",
+        "Explains the benefit of each change (e.g., 'more direct', 'clearer for non-experts')"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Generate revision checklist with prioritized tasks",
+      "prompt": "A paper draft has these problems: (1) P1: Related Work § has 6 pages of material that overlaps with Methodology §. (2) P1: No failure case analysis despite good success results. (3) P1: Methodology lacks formal problem definition. (4) P2: Abstract is generic without specific numbers. (5) P2: Figures have insufficient captions. (6) P3: Some sentences use passive voice. Create a prioritized revision checklist grouping by criticality level with estimated time per task.",
+      "expected_output": "Structured revision checklist organized by priority (P1, P2, P3) with actionable tasks",
+      "expectations": [
+        "Groups problems by priority level (Critical P1, Important P2, Nice-to-have P3)",
+        "Provides 3-5 actionable tasks per priority level",
+        "Tasks are specific and verifiable (not vague like 'improve clarity')",
+        "Includes estimated time for each task or priority group",
+        "Marks completeness with checkboxes ([ ])",
+        "Orders tasks within each priority by impact"
+      ]
+    }
+  ]
+}

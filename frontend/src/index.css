@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/* Tailwind v4 theme tokens — exposed as CSS variables and Tailwind utilities. */
+@theme {
+  --font-sans: "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI",
+    "Roboto", "Helvetica Neue", "Arial", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas",
+    "Liberation Mono", monospace;
+  --radius: 0.625rem;
+
+  --color-background: oklch(0.99 0 0);
+  --color-foreground: oklch(0.18 0.01 250);
+
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.18 0.01 250);
+
+  --color-muted: oklch(0.96 0.005 250);
+  --color-muted-foreground: oklch(0.5 0.01 250);
+
+  --color-border: oklch(0.92 0.005 250);
+  --color-input: oklch(0.92 0.005 250);
+
+  --color-primary: oklch(0.45 0.15 250);
+  --color-primary-foreground: oklch(0.98 0 0);
+
+  --color-secondary: oklch(0.95 0.01 250);
+  --color-secondary-foreground: oklch(0.2 0.01 250);
+
+  --color-accent: oklch(0.94 0.03 230);
+  --color-accent-foreground: oklch(0.2 0.01 250);
+
+  --color-destructive: oklch(0.55 0.22 27);
+  --color-destructive-foreground: oklch(0.98 0 0);
+
+  --color-success: oklch(0.6 0.16 152);
+  --color-success-foreground: oklch(0.98 0 0);
+
+  --color-warning: oklch(0.78 0.13 75);
+  --color-warning-foreground: oklch(0.2 0.05 75);
+
+  --color-ring: oklch(0.62 0.05 250);
+}
+
+/* Dark theme — flip token values when `.dark` is on the <html>. */
+.dark {
+  --color-background: oklch(0.16 0.01 250);
+  --color-foreground: oklch(0.95 0.005 250);
+
+  --color-card: oklch(0.2 0.01 250);
+  --color-card-foreground: oklch(0.95 0.005 250);
+
+  --color-muted: oklch(0.25 0.01 250);
+  --color-muted-foreground: oklch(0.7 0.01 250);
+
+  --color-border: oklch(0.3 0.01 250);
+  --color-input: oklch(0.3 0.01 250);
+
+  --color-primary: oklch(0.78 0.13 250);
+  --color-primary-foreground: oklch(0.16 0.01 250);
+
+  --color-secondary: oklch(0.28 0.01 250);
+  --color-secondary-foreground: oklch(0.95 0.005 250);
+
+  --color-accent: oklch(0.32 0.04 230);
+  --color-accent-foreground: oklch(0.95 0.005 250);
+
+  --color-destructive: oklch(0.7 0.18 27);
+  --color-destructive-foreground: oklch(0.16 0.01 250);
+
+  --color-success: oklch(0.75 0.15 152);
+  --color-warning: oklch(0.85 0.13 75);
+  --color-ring: oklch(0.62 0.05 250);
+}
+
+/* Sensible defaults — avoid Tailwind's preflight stripping our custom tokens. */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-primary), transparent 70%);
+  }
+}
+
+/* Tiny utility helpers we use across components. */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-muted-foreground) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--color-muted-foreground), transparent 60%);
+    border-radius: 999px;
+  }
+}

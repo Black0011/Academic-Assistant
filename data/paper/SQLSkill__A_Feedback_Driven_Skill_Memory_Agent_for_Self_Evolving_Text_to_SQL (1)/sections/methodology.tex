@@ -1,0 +1,214 @@
+% sections/methodology.tex
+
+\section{The SQLSkill Framework}
+\label{sec:method}
+
+Figure~\ref{fig:framework} illustrates the overall architecture. Given a question $q$ and schema $\mathcal{S}$, SQLSkill proceeds through five stages: (1)~Schema-aware query understanding, (2)~Lightweight memory retrieval, (3)~Skill-augmented SQL generation, (4)~Execution and verification, and (5)~Deferred batch Skill optimization.
+
+\begin{figure*}[t]
+  \centering
+  \fbox{\parbox{0.95\textwidth}{\centering\vspace{2.5cm}
+  \textbf{[Figure 1: Framework Overview --- To be drawn]}\\[6pt]
+  \small\textit{Design specification:}\\[3pt]
+  \textbf{Layout:} Horizontal five-stage pipeline (left to right) at the top;\\
+  three-layer memory stack (vertical) at the bottom-left; dual-track distillation at the bottom-right.\\[3pt]
+  \textbf{Top row (pipeline):} Query Understanding $\to$ Memory Retrieval $\to$ Skill-Augmented Generation $\to$ Execution \& Verification $\to$ Deferred Batch Optimization. Each stage as a rounded rectangle.\\[3pt]
+  \textbf{Bottom-left (memory stack):} Three stacked layers: Session State (lightest shade, ephemeral) / Case Library (medium shade, L0--L3 grades shown as color gradient) / Skill Bank (darkest shade, long-term). Upward arrows labeled ``evidence-gated promotion.''\\[3pt]
+  \textbf{Bottom-right (distillation):} Two parallel tracks branching from Case Library: Exploratory track (L1+ $\to$ EHR soft hints, dashed arrow to Generation stage) and Governance track (L2+ $\to$ Skill Bank writes, solid arrow).\\[3pt]
+  \textbf{Key connections:} Downward arrow from Skill Bank to ``Memory Retrieval'' stage (Skill injection); upward arrow from ``Execution'' stage to Case Library (case capture).
+  \vspace{2.5cm}}}
+  \caption{Overview of the SQLSkill framework. The agent operates through a five-stage pipeline (top). Knowledge accumulates in a three-layer memory hierarchy (bottom-left) and flows upward through evidence-gated promotion. The dual-track distillation engine (bottom-right) converts accumulated cases into reusable Skills or temporary hints, which are injected back into the generation stage.}
+  \label{fig:framework}
+\end{figure*}
+
+\subsection{Three-Layer Memory Architecture}
+\label{subsec:memory}
+
+SQLSkill organizes memory into three layers with distinct persistence, update frequency, and scope:
+
+\textbf{Layer 1: Session State (short-term).} Maintains execution traces, intermediate SQL attempts, error context, and working hypotheses within a single session. Its primary value lies in \emph{context-aware retries}: when generation fails, the current session's error history is injected into the retry prompt, giving retries access to what was already tried and why it failed. Session State is automatically populated and discarded at session end, with valuable traces promoted to the Case Library.
+
+\textbf{Layer 2: Case Library (mid-term).} Stores cross-session episodic records graded L0--L3 (Table~\ref{tab:evidence_grades}). Each Case records the full execution context: question, schema, generated SQL, execution result, error analysis (four-dimensional error vector, error signatures), evidence sources, and promotion history. Cases serve as the raw material for Skill distillation and are promoted through evidence grades as supporting evidence accumulates.
+
+\textbf{Layer 3: Skill Bank (long-term).} Stores structured Skill documents (Eq.~\ref{eq:skill_def}) that have passed evidence thresholds through distillation. Skills operate at the \emph{query-type level}, encoding cross-database transferable patterns such as ``LAG/LEAD window function for period-over-period calculation'' or ``LEFT JOIN preserving main table row count,'' while database-specific knowledge remains in the Case Library. The Skill Bank can only be modified through the distillation pipeline, never by single execution events.
+
+\textbf{Knowledge promotion triggers:}
+\begin{itemize}
+  \item \emph{Case capture}: On query completion $\to$ $L_0$ Case entry.
+  \item \emph{Recurrence detection}: Same error signature across $\geq N_{\text{recur}}$ queries $\to$ $L_0 \to L_1$.
+  \item \emph{Evidence upgrade}: Execution result verification or GT comparison $\to$ $L_1 \to L_2$.
+  \item \emph{Distillation trigger}: Same-type $L_1$+ Cases $\geq N_{\text{distill}}$ $\to$ distillation to Skill Bank.
+\end{itemize}
+
+\subsection{Schema-Aware Query Understanding}
+\label{subsec:query_understanding}
+
+Before retrieval, the Query Analyzer processes $(q, \mathcal{S})$ to produce a structured query context $x(q)$ containing: query type classification, identified schema entities, difficulty assessment, operation tags, output format, and risk flags. This context drives both Skill retrieval and Case injection decisions.
+
+\subsection{Lightweight Memory Retrieval}
+\label{subsec:retrieval}
+
+SQLSkill adopts a \emph{lightweight, Skill-first} retrieval design rather than a heavy IR pipeline:
+
+\textbf{Skill retrieval (primary path).} Given query context $x(q)$:
+\begin{equation}
+  \mathcal{K}_{\text{cand}} = \text{Retrieve}_{\text{skill}}(q, \mathcal{S}, x(q), \mathcal{B})
+\end{equation}
+This proceeds in two steps: (1)~\emph{Rule-based filtering} by query type, operation tags, and schema entities from $x(q)$; (2)~\emph{Lightweight semantic ranking} within candidates by trigger-question similarity, retaining top-$K_{\text{skill}}$ Skills (default $K_{\text{skill}}=3$).
+
+\textbf{Case injection (conditional path).} Cases are \emph{not} retrieved by default. A gating function activates Case evidence only when needed:
+\begin{equation}
+  g(q) = \mathbb{I}\!\left[\text{schema\_gap}(q, \mathcal{K}_{\text{cand}}) \vee \text{risk}(q) \vee \text{retry}(q)\right]
+\end{equation}
+where $\text{risk}(q) = 1$ if the query context $x(q)$ flags anti-pattern risk (e.g., query type known to trigger frequent errors), and $\text{retry}(q) = 1$ if the current query is a retry after a prior failure within the same session.
+
+The schema gap condition is defined as:
+\begin{equation}
+  \text{schema\_gap}(q, \mathcal{K}_{\text{cand}}) = \mathbb{I}\!\left[\frac{|\text{ent}(q) \cap \bigcup_{S_k} \text{ent}(\mathcal{C}_k)|}{|\text{ent}(q)|} < \theta_{\text{gap}}\right]
+\end{equation}
+where $\text{ent}(q)$ is the schema entity set from $x(q)$ and $\theta_{\text{gap}} = 0.5$. When $g(q)=1$, a small number of high-grade Cases (preferring $L_2$/$L_3$) are selected by matching query type, error dimension, and schema entity overlap.
+
+\subsection{Skill-Augmented SQL Generation}
+\label{subsec:generation}
+
+The generation prompt is structured as: System instruction (declaring Skill priority) $\to$ Skill Hints (top-$K$ retrieved Skills) $\to$ Conditional Evidence (failure warnings, success examples, when $g(q)=1$) $\to$ Current Task (schema + question). This ordering exploits the attention distribution pattern where prompt boundaries receive higher attention weight~\cite{liu2024lostmiddle}.
+
+\subsection{Conflict Resolution Routing}
+\label{subsec:conflict}
+
+When a query simultaneously triggers positive and Anti-Pattern Skills, conflict detection identifies pairs $(S_i, S_j)$ with opposing polarity and high trigger overlap:
+\begin{equation}
+  \text{conflict}(S_i, S_j) = \mathbb{I}\!\left[p_i \neq p_j \wedge \text{sim}(\tau_i, \tau_j) > \theta_{\text{conflict}}\right]
+\end{equation}
+where $\text{sim}(\tau_i, \tau_j)$ denotes cosine similarity between sentence embeddings of the two trigger conditions, and $\theta_{\text{conflict}} = 0.7$.
+
+Resolution follows three priority levels: (1)~\emph{Context specificity}, where the Skill whose context more precisely matches $x(q)$ wins; (2)~\emph{Evidence strength}, where the Skill distilled from higher-grade Cases wins; (3)~\emph{Counterfactual gain}, computed as $\text{score} = \hat{g}_k \cdot \log(1 + u_k)$. When scores are within 10\%, both Skills are injected with explicit conflict annotation.
+
+\subsection{Deferred Batch Skill Optimization}
+\label{subsec:optimization}
+
+The optimization loop proceeds through five phases:
+
+\textbf{Phase 1: Execution and feedback.} The agent executes SQL and generates natural language feedback (success confirmation or structured error diagnosis with four-dimensional error vector and signatures).
+
+\textbf{Phase 2: Case capture and grading.} Results are written to the Case Library as L0 entries. Failed cases receive four-dimensional error classification, error signatures for cross-case clustering, and diagnostic tags. Successful cases trigger the counterfactual replay module.
+
+\textbf{Phase 3: Evidence promotion.} Cases are promoted through the L0$\to$L1$\to$L2$\to$L3 ladder as evidence accumulates (Table~\ref{tab:evidence_grades}). L2$\to$L3 requires passing a pre-distillation conflict check against existing Skills.
+
+\textbf{Phase 4: Dual-track distillation.}
+The distillation engine maintains two tracks with distinct evidence requirements and output scopes:
+\begin{equation}
+  \mathcal{U}(\mathcal{B}^{(t-1)}, \mathcal{L}^{(t-1)}, F) = \begin{cases}
+    \text{Distill}_{\text{explore}}(\mathcal{L}_{d,z}^{(\geq L_0)}) & \text{if } |\mathcal{L}_{d,z}^{(\geq L_1)}| \geq N_{\text{distill}}^{\text{exp}} \\
+    \text{Distill}_{\text{govern}}(\mathcal{L}_{d,z}^{(\geq L_2)}) & \text{if } |\mathcal{L}_{d,z}^{(\geq L_2)}| \geq N_{\text{distill}}^{\text{gov}}
+  \end{cases}
+  \label{eq:dual_track}
+\end{equation}
+where $\mathcal{L}_{d,z}$ denotes the Case subset sharing error dimension $d$ and equivalent signature $z$.
+
+\begin{itemize}
+  \item \emph{Exploratory distillation} (triggered when $\geq N_{\text{distill}}^{\text{exp}}$ $L_1$+ Cases accumulate; input includes all $L_0$+ Cases in the cluster for full context): Generates \emph{Ephemeral Hint Records} (EHRs), which are temporary soft hints and negative few-shot examples scoped to the current query type. EHRs are injected as advisory prompts marked as unverified and do \textbf{not} modify the Skill Bank. They expire when their source Cases are promoted to $L_2$+ or after $T_{\text{ehr}}$ queries without governance-level upgrade.
+  \item \emph{Governance distillation} (triggered when $\geq N_{\text{distill}}^{\text{gov}}$ L2+ Cases accumulate): Distills verified cases into new or updated Skills with full provenance. Requires passing a pre-write conflict detection against existing Skills in $\mathcal{B}$. Only this track can create new Skills or update existing ones in the Skill Bank.
+\end{itemize}
+
+\textbf{Phase 5: Skill update.} New positive Skills or Anti-Pattern Skills are written to the Skill Bank; conflicting existing Skills are flagged for review. Version $\mathcal{B}^{(t-1)} \to \mathcal{B}^{(t)}$ is recorded.
+
+\textbf{Counterfactual Replay credit assignment.} When multiple Skills are injected, rather than relying on natural language attribution, SQLSkill uses \emph{Counterfactual Replay}: for each injected Skill $S_i$, the system constructs a stripped prompt (removing $S_i$) and re-executes under identical decoding configuration:
+\begin{equation}
+  \Delta_i(q) = M(q; \mathcal{K}) - M(q; \mathcal{K} \setminus \{S_i\})
+\end{equation}
+where $M(q; \mathcal{K}) = \mathbb{I}[\text{exec}(c(q; \mathcal{K}), \mathcal{S}) = r^*]$ is the execution accuracy indicator. The counterfactual gain is accumulated into $G_k$ and normalized:
+\begin{equation}
+  \hat{g}_k = \frac{G_k}{u_k + \epsilon_{\text{cf}}}
+\end{equation}
+with $\epsilon_{\text{cf}} = 1$ providing cold-start regularization for newly distilled Skills (those with $u_k < N_{\text{cold}}$).
+
+\subsection{Skill Evolver}
+\label{subsec:evolver}
+
+A background process triggered every $N_{\text{evolve}}=100$ queries or when the Skill Bank exceeds $M_{\text{max}}=200$ entries performs four operations (with cold-start protection: Skills with $u_k < N_{\text{cold}} = 5$ are exempt from deprecation and splitting):
+\begin{itemize}
+  \item \textbf{Deprecation:} Skills with $\hat{g}_k < 0$ and $u_k \geq N_{\text{cold}}$ are marked deprecated.
+  \item \textbf{Merge:} Skills with trigger similarity $\text{sim}(\tau_i, \tau_j) > \theta_{\text{merge}} = 0.85$ are consolidated.
+  \item \textbf{Split:} Skills with $u_k > 50$ but $\hat{g}_k \approx 0$ (high variance) are analyzed for failure sub-patterns and split into finer-grained Skills.
+  \item \textbf{Refinement:} Skills with $\hat{g}_k > 0$ and $\ell_k^{\min} \geq L_2$ are re-distilled from recent cases to prevent staleness.
+\end{itemize}
+
+All implementation hyperparameters (thresholds, capacity limits, timer intervals) are listed in Appendix Table~\ref{tab:hyperparams}.
+
+\subsection{Algorithmic Summary}
+\label{subsec:algorithms}
+
+Algorithm~\ref{alg:inference} presents the SQLSkill inference procedure for a single query, and Algorithm~\ref{alg:distillation} details the dual-track distillation logic. Error clusters $(d, z)$ are maintained incrementally: each failed query's error signatures are matched against existing clusters by exact equality of $(\rho_d, \alpha_d)$ within each dimension $d$; new signatures create new clusters.
+
+\textbf{Running example.} Consider a query ``calculate monthly sales growth rate per product category'' on an e-commerce database. (1)~The Query Analyzer produces $x(q)$ with type $=$ \{time\_series, aggregation\} and entities $=$ \{orders, products, order\_items\}. (2)~Skill retrieval matches a positive Skill ``LAG/LEAD for period-over-period calculation'' and an Anti-Pattern Skill ``LAG without PARTITION BY causes cross-group contamination.'' (3)~Conflict resolution detects opposing polarity with $\text{sim}(\tau_i, \tau_j) > 0.7$; since the Anti-Pattern has higher evidence ($L_2$ vs $L_1$), it is injected first as a warning. (4)~If the generated SQL omits the bridge table \texttt{order\_items}, the Error Analyzer activates $D_{\text{rel}}$ with signature $z_{\text{rel}}(q) = \langle \text{missing\_join},\; \texttt{orders}{\to}\texttt{products},\; \text{no\_intermediate\_table} \rangle$. (5)~After this signature recurs across 3 different queries ($\geq N_{\text{recur}}$), the Cases are promoted to $L_1$; once verified by execution comparison, they reach $L_2$ and trigger governance distillation of a new Skill encoding the three-table join pattern.
+
+\begin{figure*}[t]
+  \centering
+  \fbox{\parbox{0.95\textwidth}{\centering\vspace{2.5cm}
+  \textbf{[Figure 3: Running Example Walkthrough --- To be drawn]}\\[6pt]
+  \small\textit{Design specification:}\\[3pt]
+  \textbf{Layout:} Horizontal timeline (left to right) showing the lifecycle of one error pattern across multiple queries.\\[3pt]
+  \textbf{Column 1 (Query \& Analysis):} Box showing the example query ``monthly sales growth per category.'' Below: QueryContext output (type tags, entity set). Arrow into Column 2.\\[3pt]
+  \textbf{Column 2 (Retrieval \& Conflict):} Two retrieved Skills shown as cards (positive with ``+'' badge, anti-pattern with ``$-$'' badge). Conflict detected; anti-pattern prioritized (higher evidence). Arrow into Column 3.\\[3pt]
+  \textbf{Column 3 (Generation \& Error):} Generated SQL shown (abbreviated). Red highlight on missing JOIN. Error Analyzer output: $D_{\text{relation}}$ activated, signature shown. Arrow down to Case Library (L0 entry).\\[3pt]
+  \textbf{Column 4 (Accumulation \& Distillation):} Timeline showing the same signature recurring across Query \#2, \#3, \#4. At recurrence $\geq N_{\text{recur}}$: L0$\to$L1 promotion. After execution verification: L1$\to$L2. At $\geq N_{\text{distill}}^{\text{gov}}$ L2 cases: governance distillation fires. New Skill card appears in Skill Bank.\\[3pt]
+  \textbf{Visual cues:} Green checkmarks for successful promotions; red $\times$ for the initial failure; gradient shading on Case boxes matching evidence level (L0 lightest $\to$ L2 darkest).
+  \vspace{2.5cm}}}
+  \caption{End-to-end walkthrough of the running example. A ``missing bridge table'' error is detected (Column 3), accumulated as Cases across multiple queries (Column 4), promoted through evidence grades, and ultimately distilled into a reusable Skill that prevents the same error in future queries.}
+  \label{fig:running_example}
+\end{figure*}
+
+Figure~\ref{fig:running_example} visualizes this process end-to-end. The key observation is that a single error instance (Column 3) is insufficient to warrant a Skill Bank write; only after the pattern recurs and is verified across multiple queries (Column 4) does the governance distillation track activate.
+
+\begin{algorithm}[t]
+\caption{SQLSkill Inference Pipeline}
+\label{alg:inference}
+\begin{algorithmic}[1]
+\REQUIRE Question $q$, schema $\mathcal{S}$, Skill Bank $\mathcal{B}$, Case Library $\mathcal{L}$, Session State $\mathcal{W}$
+\ENSURE Generated SQL $c$, updated $\mathcal{L}$, $\mathcal{W}$
+\STATE $x(q) \leftarrow \text{QueryAnalyzer}(q, \mathcal{S})$ \COMMENT{Schema-aware understanding}
+\STATE $\mathcal{K}_{\text{cand}} \leftarrow \text{RetrieveSkill}(x(q), \mathcal{B})$ \COMMENT{Rule filter + semantic rank}
+\STATE $g \leftarrow \text{schema\_gap}(q, \mathcal{K}_{\text{cand}}) \vee \text{risk}(q) \vee \text{retry}(q)$
+\IF{$g = 1$}
+  \STATE $\mathcal{E}_{\text{case}} \leftarrow \text{SelectCases}(\mathcal{L}, x(q))$ \COMMENT{Conditional case injection}
+\ELSE
+  \STATE $\mathcal{E}_{\text{case}} \leftarrow \emptyset$
+\ENDIF
+\STATE Resolve conflicts in $\mathcal{K}_{\text{cand}}$ via three-priority router
+\STATE $c \leftarrow \text{Generate}(q, \mathcal{S}, \mathcal{K}_{\text{cand}}, \mathcal{E}_{\text{case}}, \mathcal{W})$
+\STATE $r \leftarrow \text{Execute}(c, \mathcal{S})$
+\IF{$r$ matches ground truth}
+  \STATE Record success Case at $L_0$; update $\text{cf\_gain}$ for used Skills
+\ELSE
+  \STATE $\mathbf{e}(q), \mathbf{z}(q) \leftarrow \text{ErrorAnalyzer}(q, c, r)$ \COMMENT{4-dim classification}
+  \STATE Record failure Case at $L_0$ with $\mathbf{e}(q), \mathbf{z}(q)$
+  \STATE Update $\mathcal{W}$ with error context; retry up to $N_{\text{retry}}$ times
+\ENDIF
+\STATE \textbf{trigger} $\text{EvidencePromotion}(\mathcal{L})$ \COMMENT{Check L0$\to$L1$\to$L2 upgrades}
+\STATE \textbf{trigger} $\text{DistillationCheck}(\mathcal{L}, \mathcal{B})$ \COMMENT{Algorithm~\ref{alg:distillation}}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[t]
+\caption{Dual-Track Distillation}
+\label{alg:distillation}
+\begin{algorithmic}[1]
+\REQUIRE Case Library $\mathcal{L}$, Skill Bank $\mathcal{B}$, thresholds $N_{\text{distill}}^{\text{exp}}$, $N_{\text{distill}}^{\text{gov}}$
+\ENSURE Updated $\mathcal{B}$
+\FOR{each error cluster $(d, z)$ in $\mathcal{L}$}
+  \STATE $\mathcal{L}_{d,z}^{(\geq L_1)} \leftarrow \{\text{Case}_j \in \mathcal{L} : e_d(q_j){=}1 \wedge z_d(q_j) \equiv z \wedge \ell_j \geq L_1\}$
+  \STATE $\mathcal{L}_{d,z}^{(\geq L_2)} \leftarrow \{\text{Case}_j \in \mathcal{L}_{d,z}^{(\geq L_1)} : \ell_j \geq L_2\}$
+  \IF{$|\mathcal{L}_{d,z}^{(\geq L_2)}| \geq N_{\text{distill}}^{\text{gov}}$}
+    \STATE $S_{\text{new}} \leftarrow \text{Distill}_{\text{govern}}(\mathcal{L}_{d,z}^{(\geq L_2)})$ \COMMENT{Governance track}
+    \IF{$\text{ConflictCheck}(S_{\text{new}}, \mathcal{B})$ passes}
+      \STATE $\mathcal{B} \leftarrow \mathcal{B} \cup \{S_{\text{new}}\}$ \COMMENT{Write to Skill Bank}
+    \ENDIF
+  \ELSIF{$|\mathcal{L}_{d,z}^{(\geq L_1)}| \geq N_{\text{distill}}^{\text{exp}}$}
+    \STATE $\text{EHR} \leftarrow \text{Distill}_{\text{explore}}(\mathcal{L}_{d,z}^{(\geq L_0)})$ \COMMENT{Exploratory track}
+    \STATE Store EHR as temporary soft hint (expires after $T_{\text{ehr}}$ queries)
+    \STATE \textbf{Note:} Does NOT modify $\mathcal{B}$
+  \ENDIF
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}

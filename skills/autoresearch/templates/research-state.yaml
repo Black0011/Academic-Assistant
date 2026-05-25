@@ -1,0 +1,30 @@
+# Academic Research State — 用于追踪调研进度
+# 由 autoresearch Skill 管理，每轮内环/外环后更新
+
+research_question: ""          # 核心研究问题
+started_at: ""                 # 开始时间
+last_updated: ""               # 最后更新时间
+
+status: "bootstrap"            # bootstrap | inner_loop | outer_loop | concluding | done
+
+# 主题分支
+branches:
+  # - name: "子方向名称"
+  #   priority: high/medium/low
+  #   status: active/saturated/deferred
+  #   papers_found: 0
+  #   papers_read: 0
+  #   key_findings: ""
+
+# 内环计数
+inner_loop_count: 0
+outer_loop_count: 0
+
+# 统计
+total_papers_found: 0
+total_papers_read: 0
+total_papers_downloaded: 0
+
+# 下一步行动
+next_action: ""
+next_action_reason: ""

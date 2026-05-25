@@ -1,0 +1,122 @@
+% sections/experiments.tex
+
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Datasets}
+\label{subsec:datasets}
+
+We evaluate on two primary benchmarks spanning standard and complex settings:
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Evaluation datasets.}
+  \label{tab:datasets}
+  \begin{tabular}{llll}
+    \toprule
+    Dataset & Scale & Characteristics & Usage \\
+    \midrule
+    Spider 1.0 & 7000/1034 & Cross-database, standard & Primary \\
+    BIRD & 9428/1534 & Complex schemas, dirty data & Primary \\
+    Spider 2.0 & 632 workflows & Enterprise multi-step & Challenge \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Spider 1.0~\cite{yu2018spider} is the standard cross-database benchmark with moderate schema complexity. BIRD~\cite{li2023bird} introduces larger schemas, noisy column values, and external knowledge requirements, better reflecting enterprise scenarios. Spider 2.0~\cite{lei2024spider2} represents extreme enterprise difficulty (best agent achieves 21.3\% success rate) and serves as a challenge evaluation.
+
+\subsection{Controlled Memory Benefit Protocol}
+\label{subsec:protocol}
+
+To rigorously isolate the contribution of each memory layer, we adopt a four-condition controlled protocol where the \emph{only} independent variable is the memory system's activation state:
+
+\begin{itemize}
+  \item \textbf{Condition A (No Memory):} All memory components disabled---pure baseline agent accuracy.
+  \item \textbf{Condition B (Cases Only):} Case Library and Session State enabled, but Skill Bank remains empty (no distillation)---quantifies raw episodic memory benefit.
+  \item \textbf{Condition C (Train-Set Distillation):} Full distillation pipeline runs on training set; resulting Skill Bank is frozen before test evaluation---quantifies offline Skill generalization.
+  \item \textbf{Condition D (Full SQLSkill):} Online distillation during test evaluation; Skill Bank starts empty and evolves---quantifies online self-evolution capability.
+\end{itemize}
+
+All conditions share the same base agent, backbone model (GPT-4o), inference budget ($N_{\text{retry}}=3$), and decoding parameters (temperature 0). The only variable is memory activation.
+
+\textbf{Intended ablation conclusions:} A$\to$B demonstrates benefit of episodic memory even without distillation; B$\to$C demonstrates offline Skill distillation contributes generalization; C$\to$D demonstrates the advantage of online self-evolution over static Skills.
+
+\subsection{Baselines}
+\label{subsec:baselines}
+
+We compare against methods spanning three paradigms:
+
+\begin{itemize}
+  \item \textbf{Zero-memory:} Direct GPT-4o (zero-shot), Few-shot GPT-4o (4-shot static demonstrations).
+  \item \textbf{Agent with session memory:} ReAct (tool use, no persistent memory), Reflexion~\cite{shinn2023reflexion} (single-session self-reflection).
+  \item \textbf{Persistent memory:} ExpeL~\cite{zhao2023expel} (persistent experience library), DAIL-SQL~\cite{gao2024dail} (static CBR), DIN-SQL~\cite{pourreza2023din} (decomposition + self-correction).
+  \item \textbf{Dynamic SQL memory:} Memo-SQL~\cite{yang2026memosql} (experience-driven error-repair quintuples), LPE-SQL~\cite{chu2024lpesql} (dual notebooks with Rethink-and-Update).
+\end{itemize}
+
+\subsection{Metrics}
+\label{subsec:metrics}
+
+\textbf{Primary:} Execution Accuracy (EA)---proportion of generated SQL whose execution results match ground truth.
+
+\textbf{Secondary:}
+\begin{itemize}
+  \item Error Recurrence Rate (ERR, Eq.~\ref{eq:err_total}), reported per-dimension ($D_{\text{table}}$, $D_{\text{field}}$, $D_{\text{relation}}$, $D_{\text{filter}}$) and as weighted aggregate.
+  \item Valid SQL Rate (VSR)---syntactically parseable SQL proportion.
+  \item Skill Utilization Rate (SUR)---proportion of retrieved Skills with positive counterfactual gain ($\Delta_i > 0$).
+  \item Skill Bank growth curve and semantic dispersion.
+\end{itemize}
+
+\subsection{Implementation Details}
+\label{subsec:implementation}
+
+The base agent uses GPT-4o as the backbone LLM with temperature 0 for reproducibility. Schema linearization follows the DAIL-SQL format (table names + column names + types + foreign keys). The Query Analyzer, Error Analyzer, and distillation modules all use the same backbone. Counterfactual replay uses greedy decoding ($T=0$) to ensure deterministic comparison. Key hyperparameters are listed in Appendix Table~\ref{tab:hyperparams}.
+
+\textbf{Counterfactual replay cost.} The replay mechanism does not trigger on every query. It activates only for \emph{successful} queries where $\geq 2$ Skills were injected, as single-Skill attribution is trivial. With default $K_{\text{skill}}=3$, replay requires at most 3 additional generation calls per qualifying query. We estimate that approximately 30--50\% of queries will qualify (those retrieving multiple Skills and succeeding), yielding an average overhead of 1.5--2.5$\times$ additional generation tokens for the credit assignment subset. This cost is amortized over the Skill lifecycle---each Skill only needs sufficient replay samples ($\geq N_{\text{cold}}=5$) before its $\hat{g}_k$ stabilizes.
+
+\subsection{Results}
+\label{subsec:results}
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Main results on Spider Dev and BIRD Dev. EA (\%) is the primary metric. ERR (\%) measures error recurrence across batches. Results to be filled upon experiment completion.}
+  \label{tab:main_results}
+  \begin{tabular}{lcccc}
+    \toprule
+    \multirow{2}{*}{Method} & \multicolumn{2}{c}{Spider Dev} & \multicolumn{2}{c}{BIRD Dev} \\
+    \cmidrule(lr){2-3} \cmidrule(lr){4-5}
+    & EA & ERR$\downarrow$ & EA & ERR$\downarrow$ \\
+    \midrule
+    GPT-4o (zero-shot) & --- & --- & --- & --- \\
+    GPT-4o (4-shot) & --- & --- & --- & --- \\
+    DIN-SQL & --- & --- & --- & --- \\
+    DAIL-SQL & --- & --- & --- & --- \\
+    Reflexion & --- & --- & --- & --- \\
+    Memo-SQL & --- & --- & --- & --- \\
+    LPE-SQL & --- & --- & --- & --- \\
+    \midrule
+    SQLSkill (A: No Memory) & --- & --- & --- & --- \\
+    SQLSkill (B: Cases Only) & --- & --- & --- & --- \\
+    SQLSkill (C: Train Distill) & --- & --- & --- & --- \\
+    SQLSkill (D: Full) & --- & --- & --- & --- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textit{Note: Experimental results are pending implementation completion. The table structure above reflects the planned evaluation protocol. All baselines will be evaluated under identical conditions.}
+
+\subsection{Ablation Studies}
+\label{subsec:ablation}
+
+We plan the following ablation analyses to isolate each component's contribution:
+
+\textbf{(1) Evidence grading ablation:} Compare L0--L3 graded promotion against flat immediate-write (all Cases treated as L3). This tests whether the evidence ladder prevents noisy generalization.
+
+\textbf{(2) Anti-Pattern Skill ablation:} Remove all negative-polarity Skills from the Skill Bank and measure ERR change. This tests whether explicit negative constraints contribute beyond positive Skills alone.
+
+\textbf{(3) Counterfactual replay ablation:} Replace counterfactual credit assignment with natural language attribution. This tests whether interventional evidence outperforms observational explanation for Skill lifecycle management.
+
+\textbf{(4) Batch size sensitivity:} Vary $N_{\text{distill}}^{\text{gov}} \in \{1, 2, 3, 5, 8\}$ to identify the optimal evidence accumulation threshold, analogous to MNL's~\cite{su2025mnl} batch-size experiment which found batch-16 outperforms batch-1 by 4 percentage points.
+
+\textbf{(5) Per-dimension ERR analysis:} Report ERR breakdown across $D_{\text{table}}$, $D_{\text{field}}$, $D_{\text{relation}}$, $D_{\text{filter}}$ to verify that the four-dimensional tracking captures dimension-specific improvement patterns.

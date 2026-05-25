@@ -1,0 +1,55 @@
+{
+  "type": "case",
+  "query": "多任务RL环境benchmark调研 + 主表子表重构",
+  "tasks": [
+    {
+      "id": "t1",
+      "type": "search",
+      "keywords": "multi-task RL benchmark lightweight alternatives Meta-World 2024 2025",
+      "description": "搜索 Meta-World 之外的多任务 RL 环境",
+      "status": "completed",
+      "papers_found": 4
+    },
+    {
+      "id": "t2",
+      "type": "search",
+      "keywords": "Procgen, CARL, XLand-MiniGrid, MiniGrid, ContinualWorld, MTBench, MMBench",
+      "description": "按算力梯度深入搜索各层级环境",
+      "status": "completed",
+      "papers_found": 9
+    },
+    {
+      "id": "t3",
+      "type": "restructure",
+      "description": "将 28 篇单一大表重构为 5 个方向子表（A-E），并新增 9 篇环境论文到子表 E",
+      "status": "completed"
+    },
+    {
+      "id": "t4",
+      "type": "skill_update",
+      "description": "更新 survey-table SKILL 支持子表架构，增加子表分类表和维护原则",
+      "status": "completed"
+    }
+  ],
+  "papers": [
+    {"title": "MiniGrid: Minimalistic Gridworld Environments", "url": "https://minigrid.farama.org/", "institution": "Farama Foundation", "direction": "轻量Grid环境"},
+    {"title": "XLand-100B: A Large-Scale Multi-Task Dataset for In-Context RL", "arxiv_id": "2406.08973", "institution": "Dunno Lab", "direction": "轻量Grid环境"},
+    {"title": "Procgen: Leveraging Procedural Generation to Benchmark RL", "url": "http://proceedings.mlr.press/v119/cobbe20a.html", "institution": "OpenAI", "direction": "程序生成游戏"},
+    {"title": "CARL: A Benchmark for Contextual and Adaptive RL", "arxiv_id": "2110.02102", "institution": "AutoML Freiburg", "direction": "上下文自适应"},
+    {"title": "Meta-World+: An Improved, Standardized, RL Benchmark", "arxiv_id": "2505.11289", "institution": "Farama Foundation", "direction": "机器人操作"},
+    {"title": "Continual World: A Robotic Benchmark For Continual RL", "arxiv_id": "2105.10919", "institution": "Wroclaw", "direction": "持续RL评测"},
+    {"title": "MTBench: Benchmarking Massively Parallelized Multi-Task RL for Robotics", "arxiv_id": "2507.23172", "institution": "UT Austin / Sony AI", "direction": "GPU加速机器人"},
+    {"title": "MMBench / Newt: Learning Massively Multitask World Models", "arxiv_id": "2511.19584", "institution": "UC San Diego", "direction": "超大规模多任务"},
+    {"title": "Bigger, Regularized, Categorical: High-Capacity Value Functions", "arxiv_id": "2505.23150", "institution": "UC Berkeley", "direction": "多任务Value Function"}
+  ],
+  "verdict": "pass",
+  "feedback": "本轮完成两项工作：1）环境/benchmark 专项调研，找到 9 个覆盖极低→高算力的多任务 RL 环境，按算力梯度排序方便用户选择；2）主表从单一 28 篇大表重构为 5 个方向子表（A-E），论文总数扩展到 37 篇。Continual World 与用户已有 Meta-World 经验高度互补，是最优先推荐。",
+  "strategy_notes": "按算力梯度组织环境调研的策略非常有效：先确认用户约束（已有 Meta-World + 算力有限），再按 CPU-only → 单GPU → 多GPU 三层搜索，每层找 2-3 个代表性环境。子表重构时以'研究方向 × 应用场景'二维交叉作为分类依据，比单一维度分类更符合直觉。",
+  "evolver_actions": [
+    "提取 Skill: sub-table taxonomy for large paper collections (b7c8d9e0f1a2)",
+    "提取 Skill: benchmark-environment survey for multi-task RL (c3d4e5f6a7b8)",
+    "更新 _index.yaml 索引"
+  ],
+  "version": "20260318000000",
+  "timestamp": "2026-03-18T00:00:00+00:00"
+}

@@ -1,0 +1,254 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║          MANUSCRIPT MANAGEMENT SYSTEM — COMPREHENSIVE ANALYSIS               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 1: MANUSCRIPT DELETION — SAFE ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DELETION FLOW (DELETE /api/manuscripts/{id}):
+
+  1. Fetch metadata          → store.get(manuscript_id)
+  2. Delete DB record        → store.delete(manuscript_id) 
+  3. Conditional cleanup     → storage.remove_owned(record)
+                                 ↓
+                          Is it a bundle?
+                            ├─ NO  → Return early (no cleanup)
+                            └─ YES → Check link mode
+                                      ├─ LINK MODE     → Return early (preserve user's dir!)
+                                      └─ COPY MODE     → Delete settings_root/<id>/
+
+
+KEY SAFETY CHECK (BundleStorage.is_link_mode):
+
+  def is_link_mode(self, manuscript: Manuscript) -> bool:
+      return manuscript.layout == "bundle" and manuscript.bundle_link_path is not None
+                                                  ↑
+                      If this path is set, it's LINK MODE → NO-OP deletion
+
+
+DELETION MATRIX:
+
+  ┌─────────────────┬──────────┬────────────┬──────────────┬────────────────────┐
+  │ Scenario        │ Layout   │ Link Path  │ Behavior     │ Disk Outcome       │
+  ├─────────────────┼──────────┼────────────┼──────────────┼────────────────────┤
+  │ Single file     │ "single" │ None       │ Early return │ DB deleted, files  │
+  │                 │          │            │              │ unaffected (never  │
+  │                 │          │            │              │ stored by AAF)      │
+  ├─────────────────┼──────────┼────────────┼──────────────┼────────────────────┤
+  │ Copy-mode bundle│ "bundle" │ None       │ Call rmtree  │ settings_root/<id> │
+  │                 │          │            │ (cleanup)    │ recursively deleted│
+  ├─────────────────┼──────────┼────────────┼──────────────┼────────────────────┤
+  │ Link-mode bundle│ "bundle" │ "/path/..." │ Early return │ Linked dir STAYS   │
+  │                 │          │            │ (preserve!)  │ on disk, user      │
+  │                 │          │            │              │ retains ownership  │
+  └─────────────────┴──────────┴────────────┴──────────────┴────────────────────┘
+
+
+EXAMPLE: User deletes paper-sqlskill-agent (link mode)
+  
+  Input:   manuscript.bundle_link_path = "/Users/.../paper-sqlskill-agent"
+  Step 1:  DB record deleted from manuscripts table ✓
+  Step 2:  is_link_mode() → checks bundle_link_path (not None) → returns True
+  Step 3:  remove_owned() → "if self.is_link_mode(manuscript): return"
+  Output:  /Users/.../paper-sqlskill-agent/ still exists on disk ✓ SAFE!
+
+
+STATUS: ✅ SAFE
+  • Single manuscripts: handled correctly (no file ops)
+  • Copy-mode: cleans up AAF-owned storage
+  • Link-mode: preserves user's directory (critical check in place)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 2: FRONTEND UX — PARTIAL ⚠️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+QUESTION 1: Can user link a folder WITHOUT copying? ✅ YES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  UI Flow:
+    1. Manuscripts page → "Import Folder" button
+    2. Enter: /Users/bizhiliang/Code/Academic-Agent/data/papers/paper-sqlskill-agent
+    3. Select: "Link" mode (not Copy)
+    4. Click: Import
+  
+  Backend:
+    @router.post("/import-folder")
+    async def import_folder(body: ImportFolderInput):
+        bundle_link_path = str(source) if body.mode == "link" else None
+                           ↑ Set to path if link, None if copy
+        
+        record = CreateManuscriptInput(
+            layout="bundle",
+            bundle_link_path=bundle_link_path  ← This is the key!
+        )
+
+  Result: ✅ Folder linked without copying
+    • Metadata: manuscript.bundle_link_path = "/Users/.../paper-sqlskill-agent"
+    • Files: AAF reads/writes in place
+    • No copy operation (small & fast)
+    • User retains directory control
+
+
+QUESTION 2: Can frontend browse subfolders? ⚠️ PARTIAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✅ What Works:
+    • Files listed (flat)
+    • Top-level grouping ("overleaf", "experiments", root)
+    • Text filter (search by filename)
+    • Open & edit any file
+    • Upload new files to any path
+
+  ❌ What's Missing:
+    • Hierarchical tree view (folders expandable)
+    • Click "overleaf/" → no expand button
+    • "overleaf/sections/" not nested, shown flat
+    • Breadcrumb navigation while editing
+    • Folder context menu (create file in subdir)
+
+
+  Current Display:
+    ┌─────────────────────────────────────┐
+    │ OVERLEAF GROUP                      │
+    ├─────────────────────────────────────┤
+    │ • overleaf/main.tex          [3 KB] │
+    │ • overleaf/sections/intro.tex [2 KB]│  ← Not expandable,
+    │ • overleaf/sections/methods.tex...  │    shown flat
+    │ • overleaf/figs/fig1.png    [45 KB] │
+    │                                     │
+    │ EXPERIMENTS GROUP                   │
+    ├─────────────────────────────────────┤
+    │ • experiments/results.json [1.2 MB] │
+    │ • experiments/log.csv      [250 KB] │
+    │                                     │
+    │ ROOT                                │
+    ├─────────────────────────────────────┤
+    │ • README.md                 [1.5 KB]│
+    │ • CHANGELOG.md              [0.8 KB]│
+    └─────────────────────────────────────┘
+
+  Workaround: Type filter "methodology" → shows only the nested file
+
+
+QUESTION 3: What's missing for user's workflow? 🎯
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  User's Project Structure:
+    /papers/paper-sqlskill-agent/
+      ├── overleaf/              (Overleaf LaTeX)
+      │   ├── main.tex
+      │   └── sections/
+      │       └── methodology.tex
+      ├── experiments/           (Data & logs)
+      ├── reviewer-comments/     (Feedback)
+      ├── notes/                 (Working notes)
+      └── README.md
+
+  Current System Capability:
+    ✅ Link the entire folder (yes, link mode works!)
+    ✅ AAF reads/writes all files in place
+    ✅ Backend returns all files via GET /tree
+    ✅ Frontend lists all files in flat UI
+    ⚠️ Frontend lacks hierarchical tree navigation
+
+  MISSING FEATURES:
+
+    Priority  │ Feature                    │ Status  │ Impact
+    ──────────┼────────────────────────────┼─────────┼────────────────────
+    HIGH      │ Hierarchical tree view     │ ❌      │ UX bottleneck for
+              │ (expandable folders)       │         │ deep folder projects
+    ──────────┼────────────────────────────┼─────────┼────────────────────
+    HIGH      │ Breadcrumb navigation      │ ❌      │ Show path while
+              │ (while editing file)       │         │ editing nested files
+    ──────────┼────────────────────────────┼─────────┼────────────────────
+    MEDIUM    │ Folder context menu        │ ❌      │ Create files in
+              │ (right-click → new file)   │         │ nested paths
+    ──────────┼────────────────────────────┼─────────┼────────────────────
+    MEDIUM    │ Drag-drop folder upload    │ ❌      │ Bulk file imports
+    ──────────┼────────────────────────────┼─────────┼────────────────────
+    LOW       │ Project templates          │ ❌      │ Quick scaffolding
+    ──────────┼────────────────────────────┼─────────┼────────────────────
+    LOW       │ Git integration (link mode)│ ❌      │ Show repo status
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+API ENDPOINTS STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  CORE IMPORTS:
+    POST /api/manuscripts/upload              ✅ Works (single files)
+    POST /api/manuscripts/import-folder       ✅ Works (copy + link)
+    POST /api/manuscripts/import-zip          ✅ Works (zip archives)
+
+  BUNDLE MANAGEMENT:
+    POST /api/manuscripts/{id}/bundle         ⚠️ Exists but no UI button
+    GET  /api/manuscripts/{id}/tree           ✅ Works (returns flat list)
+
+  FILE OPERATIONS:
+    GET    /api/manuscripts/{id}/files/{path} ✅ Works (read)
+    PUT    /api/manuscripts/{id}/files/{path} ✅ Works (write text)
+    POST   /api/manuscripts/{id}/files/{path} ✅ Works (upload binary)
+    DELETE /api/manuscripts/{id}/files/{path} ✅ Works (delete)
+
+  EXPORT:
+    GET /api/manuscripts/{id}/export-zip      ✅ Works (auto-detects overleaf/)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPLEMENTATION SKETCH: Hierarchical Tree View
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  STEP 1: Transform flat list → tree structure
+
+    Input:  ManuscriptFile[] (flat)
+            ["overleaf/main.tex", "overleaf/sections/intro.tex", "README.md"]
+
+    Output: TreeNode (nested)
+            {
+              type: "dir", name: "overleaf", children: [
+                { type: "file", name: "main.tex", path: "overleaf/main.tex" },
+                { type: "dir", name: "sections", children: [
+                  { type: "file", name: "intro.tex", path: "overleaf/sections/intro.tex" }
+                ]}
+              ]
+            }
+
+  STEP 2: Render tree with expand/collapse
+
+    TreeNode({ expanded: false })
+      ├─ Click 📁 overleaf
+      │   └─ expanded: true (toggle)
+      │       ├─ 📄 main.tex (clickable)
+      │       └─ 📁 sections
+      │           ├─ Click to expand
+      │           └─ 📄 intro.tex
+
+  STEP 3: Filter preserves structure
+
+    Input filter: "methodology"
+    Output: Only show branches containing matched files
+
+  EFFORT: 3-4 hours (medium)
+  IMPACT: High (great UX improvement)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. DELETION: ✅ SAFE for link mode
+     → Linked directories preserved when manuscript deleted
+
+  2. LINK MODE: ✅ SUPPORTED
+     → Can import /Users/.../paper-sqlskill-agent without copying
+
+  3. SUBFOLDER BROWSING: ⚠️ PARTIAL
+     → Flat list works; hierarchical tree would improve UX significantly
+
+  4. NEXT STEP: Build hierarchical tree component
+     → Would unlock full paper project workflow with nested folders
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Full analysis saved to: MANUSCRIPT_ANALYSIS.md

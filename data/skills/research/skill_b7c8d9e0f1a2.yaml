@@ -1,0 +1,38 @@
+id: b7c8d9e0f1a2
+name: "sub-table taxonomy for large paper collections"
+description: >-
+  当主表论文数量超过 20 篇且涉及 3+ 个明显不同的研究方向时，
+  将单一大表重构为按方向分类的子表架构。每个子表对应一个研究方向，
+  拥有独立的 Markdown 二级标题、描述行和完整 7 列表格。
+  子表分类基于"方向 × 应用场景"二维交叉，而非单一维度。
+  同时更新 survey-table SKILL 以支持新架构。
+trigger_pattern: "子表, 分类, 归类, 重构, 方向, subtable, taxonomy, reorganize, 主表膨胀, paper-table 太大"
+strategy:
+  planning_hints: >-
+    1. 先通读当前主表全部论文，识别自然聚类（通常 3-6 个方向）；
+    2. 分类维度选择：优先按"研究方向"分，方向内再按"类型"列细分；
+    3. 每个子表命名格式：字母编号 + 方向名称（如 A. 评估模型与方法）；
+    4. 每个子表开头用一行引用（> ...）描述聚焦内容；
+    5. 跨方向论文放入最核心方向，"类型"列标注交叉属性；
+    6. 表尾添加子表索引行，方便快速导航；
+    7. 同步更新 survey-table SKILL 的"当前子表分类"表格。
+  taxonomy_principles: >-
+    好的分类应满足：
+    - 互斥性：每篇论文明确归属一个子表
+    - 完整性：所有论文都能分入某个子表
+    - 均衡性：每个子表至少 2 篇，避免单篇独占一个子表
+    - 直觉性：读者看到子表名就能预期其中的论文类型
+    当前有效分类：
+    A=评估模型与方法 | B=多任务强化学习 | C=奖励模型与奖励塑形 | D=持续/终身学习 | E=多任务RL环境与Benchmark
+  evaluation_criteria: >-
+    重构后检查：
+    - 论文总数不变（去重后）
+    - 每个子表内论文确实属于该方向
+    - 子表间无重复论文
+    - 表头元信息（总数、子表数、日期）已更新
+    - survey-table SKILL 已同步更新
+source_query: "主表重构为子表"
+source_verdict: "pass"
+success_count: 1
+created_at: "2026-03-18T00:00:00+00:00"
+updated_at: "2026-03-18T00:00:00+00:00"

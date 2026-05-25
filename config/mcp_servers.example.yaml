@@ -1,0 +1,41 @@
+# =========================================================================
+# AAF MCP servers — example configuration
+#
+# 1. Copy this file:        cp config/mcp_servers.example.yaml config/mcp_servers.yaml
+# 2. Edit the entries you want.
+# 3. In your `.env`, set:
+#       AAF_MCP_ENABLED=true
+#       AAF_MCP_CONFIG=./config/mcp_servers.yaml
+# 4. Restart the backend.
+#
+# Each server's tools become AAF tools named  mcp__<name>__<tool>.
+# Workflows and the planner can call them through the standard
+# ToolRegistry.call() entrypoint with no extra wiring.
+#
+# Schema reference: backend/tools/mcp_config.py:MCPServerConfig
+# =========================================================================
+
+servers:
+  # ----- stdio transport (most local-dev MCP servers use this) -----------
+  - name: filesystem
+    transport: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp/aaf-mcp-fs"]
+    env: {}
+    # Limit which tools we expose. Comment out to expose all.
+    allow:
+      - read_file
+      - list_directory
+      - search_files
+    requires_network: false
+    requires_paid_api: false
+    connect_timeout_s: 10.0
+
+  # ----- SSE transport (remote-hosted MCP servers) -----------------------
+  # Uncomment and set headers from env:
+  # - name: github
+  #   transport: sse
+  #   url: https://api.example.com/mcp/sse
+  #   headers:
+  #     Authorization: "Bearer ${GITHUB_MCP_TOKEN}"
+  #   requires_network: true

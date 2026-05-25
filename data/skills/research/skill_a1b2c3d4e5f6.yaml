@@ -1,0 +1,34 @@
+id: a1b2c3d4e5f6
+name: "gap-driven multi-direction RL/reward model research"
+description: >-
+  对"大模型评估+强化学习+多任务/终身学习"交叉方向的调研策略。
+  先从已有 findings.md 识别研究空白（gap），然后按 gap 拆分为 4 个并行搜索方向，
+  每个方向独立检索后合并去重，最后按 survey-table 格式结构化录入主表。
+  适用于跨领域交叉方向的文献调研。
+trigger_pattern: "reward model, reinforcement learning, multi-task, RLHF, 奖励模型, 强化学习, 多任务, 终身学习, continual learning, lifelong learning"
+strategy:
+  planning_hints: >-
+    1. 先回顾 findings.md 中已有的研究空白（gap）列表，以 gap 驱动检索方向；
+    2. 将大方向拆为 4-6 个并行子方向，每个用不同关键词组合；
+    3. 同时关注最新工作（2025-2026）和经典基础工作；
+    4. 检索完成后立即去重，避免同一篇论文出现在多个方向的结果中。
+  search_tips: >-
+    有效关键词组合：
+    - "continual RL" + "reward model adaptation"（填补持续学习空白）
+    - "multi-task RLHF" + "reward model" + "LLM"（多任务对齐）
+    - "process reward model" + "implicit" / "temporal difference"（过程奖励新方向）
+    - "reward model generalization" + "multi-task transfer"（泛化理论）
+    - "in-context reinforcement learning" + "LLM"（新范式）
+    对每个组合同时搜 WebSearch 和 arXiv，结果互补。
+  evaluation_criteria: >-
+    高质量标准：
+    - 每个子方向至少找到 2-3 篇有实质方法贡献的论文
+    - 论文来源多样（不同机构、不同会议/arXiv）
+    - 覆盖方法论文和综述论文
+    - 特别关注直接填补 findings.md 中已识别 gap 的论文
+    - 最终追加到 paper-table.md 的论文应能让没读过原文的人理解核心方法
+source_query: "大模型评估系统，强化学习，多任务/终身学习"
+source_verdict: "pass"
+success_count: 1
+created_at: "2026-03-17T12:00:00+00:00"
+updated_at: "2026-03-17T12:00:00+00:00"

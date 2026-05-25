@@ -1,0 +1,16 @@
+skills:
+  a1b2c3d4e5f6:
+    name: "gap-driven multi-direction RL/reward model research"
+    trigger_pattern: "reward model, reinforcement learning, multi-task, RLHF, 奖励模型, 强化学习, 多任务, 终身学习, continual learning, lifelong learning"
+    success_count: 1
+    updated_at: "2026-03-17T12:00:00+00:00"
+  b7c8d9e0f1a2:
+    name: "sub-table taxonomy for large paper collections"
+    trigger_pattern: "子表, 分类, 归类, 重构, 方向, subtable, taxonomy, reorganize, 主表膨胀, paper-table 太大"
+    success_count: 1
+    updated_at: "2026-03-18T00:00:00+00:00"
+  c3d4e5f6a7b8:
+    name: "benchmark-environment survey for multi-task RL"
+    trigger_pattern: "环境, benchmark, 实验环境, 测试环境, 数据集, Meta-World替代, 多任务环境, RL环境, environment, testbed, evaluation benchmark"
+    success_count: 1
+    updated_at: "2026-03-18T00:00:00+00:00"

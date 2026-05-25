@@ -1,0 +1,75 @@
+{
+  "type": "case",
+  "query": "大模型评估系统，强化学习，多任务/终身学习",
+  "tasks": [
+    {
+      "id": "t1",
+      "type": "search",
+      "description": "从 findings.md 已有 10 篇论文提取结构化信息录入主表",
+      "status": "completed"
+    },
+    {
+      "id": "t2",
+      "type": "search",
+      "keywords": "continual RL reward model adaptation LLM 2025 2026",
+      "description": "搜索持续RL+奖励模型适应方向（填补gap D）",
+      "status": "completed",
+      "papers_found": 5
+    },
+    {
+      "id": "t3",
+      "type": "search",
+      "keywords": "lifelong learning reward model LLM 2025 2026",
+      "description": "搜索终身学习+奖励模型方向",
+      "status": "completed",
+      "papers_found": 5
+    },
+    {
+      "id": "t4",
+      "type": "search",
+      "keywords": "reward model generalization multi-task transfer RL 2025 2026",
+      "description": "搜索奖励模型泛化/多任务迁移方向",
+      "status": "completed",
+      "papers_found": 5
+    },
+    {
+      "id": "t5",
+      "type": "search",
+      "keywords": "AgentRM, PRIME, TDRM, ProgAgent, RLAnything, ICRL",
+      "description": "深度搜索候选高价值论文的详细信息",
+      "status": "completed",
+      "papers_found": 8
+    },
+    {
+      "id": "t6",
+      "type": "analyze",
+      "description": "按 survey-table 7列格式分析所有论文并追加到主表",
+      "status": "completed"
+    }
+  ],
+  "papers": [
+    {"title": "The Perfect Blend: Redefining RLHF with Mixture of Judges", "arxiv_id": "2409.20370", "institution": "Apple", "direction": "多任务RLHF"},
+    {"title": "RLAR: An Agentic Reward System for Multi-task RL on LLMs", "arxiv_id": "2603.00724", "institution": "Unknown", "direction": "多任务奖励系统"},
+    {"title": "Secrets of RLHF in LLMs Part I: PPO", "arxiv_id": "2307.04964", "institution": "复旦", "direction": "RLHF基础"},
+    {"title": "Reward Modeling for RL-Based LLM Reasoning Survey", "arxiv_id": "2602.09305", "institution": "ASU", "direction": "奖励模型综述"},
+    {"title": "Text2Reward: Reward Shaping with Language Models for RL", "arxiv_id": "2309.11489", "institution": "HKU", "direction": "LLM奖励塑形"},
+    {"title": "Reward Shaping to Mitigate Reward Hacking in RLHF", "arxiv_id": "2502.18770", "institution": "UCSB", "direction": "Reward Hacking防御"},
+    {"title": "Zero-Shot LLMs Replacing Human Feedback for Reward Shaping", "arxiv_id": "2503.22723", "institution": "Unknown", "direction": "Zero-shot Reward"},
+    {"title": "Extracting Heuristics from LLMs for Reward Shaping", "arxiv_id": "2405.15194", "institution": "Unknown", "direction": "Heuristic Reward"},
+    {"title": "Meta-Thinking in LLMs via Multi-Agent RL: A Survey", "arxiv_id": "2504.14520", "institution": "Multiple", "direction": "多Agent RL综述"},
+    {"title": "Dense Reward for Free in RLHF", "arxiv_id": "2402.00782", "institution": "Cambridge", "direction": "Dense Reward"},
+    {"title": "AgentRM: Enhancing Agent Generalization with Reward Modeling", "arxiv_id": "2502.18407", "institution": "清华 THUNLP", "direction": "多任务泛化"},
+    {"title": "PRIME: Process Reinforcement through Implicit Rewards", "arxiv_id": "2502.01456", "institution": "上海AI Lab", "direction": "隐式过程奖励"},
+    {"title": "TDRM: Smooth Reward Models with Temporal Difference", "arxiv_id": "2509.15110", "institution": "清华 THUDM", "direction": "时序一致性奖励"},
+    {"title": "ProgAgent: A Continual RL Agent with Progress-Aware Rewards", "arxiv_id": "2603.07784", "institution": "Unknown", "direction": "持续学习"},
+    {"title": "RLAnything: Forge Environment, Policy, and Reward Model", "arxiv_id": "2602.02488", "institution": "Unknown", "direction": "动态系统优化"},
+    {"title": "Reward Is Enough: LLMs Are In-Context Reinforcement Learners", "arxiv_id": "2506.06303", "institution": "UVA", "direction": "In-Context RL"},
+    {"title": "High-Capacity Value Functions are Efficient Multi-Task Learners", "arxiv_id": "2505.23150", "institution": "UC Berkeley", "direction": "多任务Value Function"},
+    {"title": "PRL: Process Reward Learning", "arxiv_id": "2601.10201", "institution": "Unknown", "direction": "过程奖励学习"}
+  ],
+  "verdict": "pass",
+  "feedback": "本轮从 10 篇扩展到 28 篇，新增 18 篇覆盖 6 个子方向。成功填补了 continual RL + reward model 的交叉空白（ProgAgent），发现了过程奖励（PRIME/TDRM/PRL）作为独立热点方向，以及 RM 微调优于 policy 微调的重要发现（AgentRM）。",
+  "strategy_notes": "gap-driven 拆分策略有效：以 findings.md 中已识别的研究空白驱动 4 个并行搜索方向，每个方向 2-3 轮 WebSearch 逐步深入。先广搜→筛选高价值→深搜细节的三步法效率高。",
+  "version": "20260317120000",
+  "timestamp": "2026-03-17T12:00:00+00:00"
+}

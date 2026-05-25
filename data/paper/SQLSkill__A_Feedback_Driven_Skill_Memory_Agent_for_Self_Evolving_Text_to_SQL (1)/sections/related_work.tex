@@ -1,0 +1,61 @@
+\section{Related Work}
+\label{sec:related_work}
+
+\subsection{Text-to-SQL Methods}
+\label{subsec:text2sql}
+
+Text-to-SQL research has evolved through three paradigms. 
+Early fine-tuning approaches~\cite{yu2018spider} trained encoder-decoder models, achieving high accuracy on Spider but suffering from poor cross-database generalization. 
+The in-context learning (ICL) paradigm eliminated fine-tuning, with methods like \textsc{Act-SQL}~\cite{actsql2023} and \textsc{Dail-SQL}~\cite{gao2024dail} achieving strong cross-database transfer through skeleton retrieval and example selection. 
+The agent paradigm embeds SQL generation in multi-step pipelines.
+\textsc{Din-SQL}~\cite{pourreza2023din} introduced task decomposition and self-correction. \textsc{Mac-SQL}~\cite{wang2025macsql} proposed a multi-agent collaborative framework with a planner, selector, and refiner. 
+\textsc{Chase-SQL}~\cite{chasesql2024} further extended this with multi-path reasoning and preference optimization. \textsc{Chess}~\cite{talaei2024chess} focused on contextual harness for efficient SQL synthesis.
+\textsc{ReFoRCE}~\cite{reforce2025} tops the Spider~2.0 leaderboard by combining self-refinement, consensus enforcement, and column exploration. Despite these advances, all existing agent-based methods treat each query independently---they cannot retain knowledge from past errors.
+The enterprise benchmark \textsc{Beaver}~\cite{chen2024beaver} confirms that SQL failures are concentrated in a few recurring categories (schema linking, analytical errors), highlighting the need for cross-query memory. 
+Our work addresses this gap by introducing a persistent skill memory that accumulates and generalizes from execution experience.
+
+\subsection{Case-Based Reasoning for Text-to-SQL}
+\label{subsec:cbr}
+
+CBR's four-stage cycle (Retrieve-Reuse-Revise-Retain) maps naturally to LLM-based SQL generation. 
+Static Retrieve-Reuse methods use fixed case bases---e.g., skeleton matching in \textsc{Act-SQL}~\cite{actsql2023} or de-semanticized retrieval in~\cite{guo2023cbr}---but lack a Retain stage, so the case base cannot grow. Dynamic Retain methods have emerged recently. 
+\textsc{ReFoRCE}~\cite{reforce2025} incorporates self-refinement that effectively retains and reuses execution feedback within a session, but without a structured persistent memory across sessions.
+\textsc{Memo-SQL}~\cite{yang2026memosql} maintains a static experience bank of error-repair quintuples constructed offline; while it provides memory, it cannot adapt to novel error patterns at deployment. 
+\textsc{Lpe-SQL}~\cite{chu2024lpesql} uses dual notebooks with a Rethink-and-Update mechanism but writes every query outcome immediately, risking noise accumulation. 
+\textsc{Mistake Notebook Learning}~\cite{su2025mnl} clusters failures in batches and demonstrates that batch accumulation (batch-16) outperforms per-instance writing on a database QA task.
+Our \textsc{SQLSkill} advances this line by (1) employing \emph{deferred batch distillation} with an evidence-gated write (L0--L3 grades and $N_{\text{distill}}$ threshold), ensuring updates rest on statistically sufficient repeated observations; (2) separating episodic memory (Case Library) from procedural memory (Skill Bank) with distinct update frequencies; and (3) tracking errors along four independent semantic dimensions (Table, Field, Relation, Filtering) rather than overlapping syntactic categories. Table~\ref{tab:comparison} summarizes the differences.
+
+\subsection{Error Pattern Distillation}
+\label{subsec:distillation}
+
+Extracting reusable error knowledge from failures is critical for agent improvement. \textsc{Reflexion}~\cite{shinn2023reflexion} generates natural-language self-reflections from environment feedback, but these reflections are ephemeral (lost across tasks) and unstructured. \textsc{ExpeL}~\cite{zhao2023expel} persists experiences as free-text rules, but lacks SQL-specific structure: trigger conditions, execution steps, schema applicability, and polarity. \textsc{ReFoRCE}~\cite{reforce2025} generates per-query self-correction guidelines but does not aggregate patterns across queries. \textsc{SQLSkill} contributes \emph{Anti-Pattern Skills}---negative constraints that encode common failure patterns---alongside positive Skills in a unified Skill Bank with conflict resolution routing. This dual-track design (exploratory and governance) enables the agent to learn both what to do and what to avoid. Inspired by \textsc{TextGrad}~\cite{yuksekgonul2024textgrad}'s insight that semantic feedback can be treated as optimizable variables, we replace immediate writes with deferred batch distillation, motivated by the discrete and noisy nature of SQL execution feedback.
+
+\subsection{Agent Memory and Skill Evolution}
+\label{subsec:memory}
+
+Long-term memory for LLM agents has been explored in general domains. \textsc{MemGPT}~\cite{packer2023memgpt} manages context windows with tiered storage, while \textsc{Voyager}~\cite{wang2023voyager} stores executable code skills in a skill library. For Text-to-SQL, \textsc{Memo-SQL}~\cite{yang2026memosql} maintains a static experience bank.
+\textsc{SkillClaw}~\cite{ma2026skillclaw} proposes a multi-agent skill evolution framework for embodied tasks, with mechanisms for skill merge, split, and deprecation. Our \textsc{SQLSkill} formalizes ``when to write'' via L0--L3 evidence grades and introduces a \emph{Skill Evolver} that performs lifecycle management (merge, split, deprecate) based on counterfactual replay credit assignment.
+Unlike prior work, we use interventional evidence (counterfactual gain) rather than observational heuristics to guide skill updates. 
+The deferred batch mechanism prevents premature generalization from noisy single-instance feedback. Table~\ref{tab:comparison} provides a structured comparison across the three research gaps identified in Section~\ref{sec:introduction}.
+
+\begin{table*}[t]
+  \centering
+  \small
+  \caption{Comparison of \textsc{SQLSkill} with representative methods across three research gaps. G1: cross-query failure accumulation; G2: SQL-aware structured representation; G3a: quality-gated writing (non-immediate); G3b: positive/negative dual-track Skills.}
+  \label{tab:comparison}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Method} & \textbf{G1: Cross-Query} & \textbf{G2: SQL-Structured} & \textbf{G3a: Write Gate} & \textbf{G3b: $\pm$ Skills} \\
+    \midrule
+    \textsc{Din-SQL}~\cite{pourreza2023din} & \ding{55} & \ding{55} & \ding{55} & \ding{55} \\
+    \textsc{Mac-SQL}~\cite{wang2025macsql} & \ding{55} & \ding{55} & \ding{55} & \ding{55} \\
+    \textsc{Chase-SQL}~\cite{chasesql2024} & \ding{55} & \ding{55} & \ding{55} & \ding{55} \\
+    \textsc{Reflexion}~\cite{shinn2023reflexion} & \ding{55} & \ding{55} & \ding{55} & \ding{55} \\
+    \textsc{ExpeL}~\cite{zhao2023expel} & \ding{51} & \ding{55} & \ding{55} & \ding{55} \\
+    \textsc{Memo-SQL}~\cite{yang2026memosql} & \ding{51} (static) & \ding{55} (tuple-based) & \ding{55} (immediate) & \ding{55} \\
+    \textsc{ReFoRCE}~\cite{reforce2025} & \ding{51} (self-refine) & \ding{51} (structured agent) & \ding{55} (immediate) & \ding{55} \\
+    \midrule
+    \textbf{\textsc{SQLSkill} (ours)} & \ding{51} (L0--L3 grades) & \ding{51} (5-tuple + 4 dim.) & \ding{51} ($N_{\text{distill}}$) & \ding{51} (dual-track) \\
+    \bottomrule
+  \end{tabular}
+\end{table*}

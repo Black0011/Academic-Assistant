@@ -1,0 +1,91 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+.python-version
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node / Vite
+node_modules/
+frontend/dist/
+frontend/.vite/
+.pnp.*
+pnpm-debug.log*
+
+# Data (user-owned, never commit)
+data/chroma/
+data/papers/
+data/cases/
+data/knowledge/**/papers/*.pdf
+# Per-paper knowledge cards are runtime artefacts (created when the user
+# runs research / imports a paper). They contain user notes and abstracts
+# and have no place in version control. The directory itself stays via
+# the .keep marker; a future schema.yaml (if introduced) is also kept.
+data/knowledge/*.yaml
+# User-uploaded manuscripts and their derived bundles (copy mode work
+# trees, version snapshots, etc.). Always per-user, often large, never
+# reproducible from the repo.
+data/manuscripts/
+# Self-evolution proposals draft on disk during workflow runs.
+data/proposals/
+# SQLite databases (tasks, events, manuscript metadata). Binary, churn
+# constantly during normal use, no review value.
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Keep committed: skills registry, small heuristic YAMLs, knowledge schema
+!data/skills/
+!data/skills/**
+!data/knowledge/.keep
+!data/knowledge/schema.yaml
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+# Laptop preset: only the .example template is committed; the real
+# .env.laptop ends up holding API keys.
+.env.laptop
+# Same for the offline preset; only the .example template is committed.
+.env.offline
+# Smoke-test artifact created by docs/PLAN steps; never commit.
+.env.laptop.smoke
+# HuggingFace cache when AAF_LOCAL_EMBEDDING_CACHE_FOLDER points here.
+data/hf_cache/
+
+# User-local model routing (the .example template stays committed)
+config/model_routing.yaml
+config/mcp_servers.yaml
+
+# Runtime LLM provider configuration written by the frontend Settings
+# panel (see backend/core/runtime_config.py). Holds API keys; never
+# commit. The .keep marker keeps the directory present in fresh clones.
+data/runtime/*
+!data/runtime/.keep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Build artifacts
+dist/
+build/
+*.egg
+
+# Logs
+logs/
+*.log
+
+# Docker
+.docker/

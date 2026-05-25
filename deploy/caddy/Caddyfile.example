@@ -1,0 +1,88 @@
+# Caddyfile for the AAF production overlay.
+#
+# Steps:
+#   1. cp deploy/caddy/Caddyfile.example deploy/caddy/Caddyfile
+#   2. Replace the {$AAF_DOMAIN} site label with your real domain (or keep
+#      the env-var form and set AAF_DOMAIN in .env — both work).
+#   3. (recommended) Set AAF_ACME_EMAIL in .env so Let's Encrypt knows
+#      who to email when a cert is about to expire.
+#   4. Open ports 80 + 443 (TCP+UDP for HTTP/3) on the host firewall.
+#   5. docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Caddy provisions and renews Let's Encrypt certificates automatically.
+# Local TLS (no public DNS) — change the site label to `https://localhost`
+# and Caddy will generate an internal CA + self-signed cert on first boot.
+
+{
+    # Tell Let's Encrypt where to reach you about cert issues. Required
+    # for production hosts; the env var stays empty in dev.
+    email {$AAF_ACME_EMAIL}
+
+    # Servers behind another L4 load balancer should set the trusted_proxies
+    # list explicitly here. We don't enable it by default because it varies
+    # by environment.
+}
+
+{$AAF_DOMAIN} {
+    encode zstd gzip
+
+    # Security headers — minimal, opinionated. Tweak CSP only after auditing
+    # everything the SPA loads (fonts, images, scripts).
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options    "nosniff"
+        Referrer-Policy           "strict-origin-when-cross-origin"
+        Permissions-Policy        "geolocation=(), microphone=(), camera=()"
+        # Don't leak the server name.
+        -Server
+    }
+
+    # SSE endpoints: keep the connection open, never buffer.
+    @sse path_regexp sse ^/api/(tasks|workflows)/.+/(stream|stream/)?$
+    handle @sse {
+        reverse_proxy frontend:80 {
+            # Caddy doesn't buffer responses by default, but be explicit.
+            flush_interval -1
+            transport http {
+                read_timeout 1h
+                write_timeout 1h
+            }
+        }
+    }
+
+    # Allow large manuscript uploads (the backend caps at 40 MB itself).
+    request_body {
+        max_size 64MB
+    }
+
+    # Everything else (SPA + REST API) hits the frontend container's
+    # nginx, which serves /assets/* and proxies /api/* to backend:8000.
+    reverse_proxy frontend:80 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host  {host}
+    }
+
+    # Plain `/healthz` for upstream load balancers — short-circuits the
+    # SPA and exposes the backend's liveness directly.
+    handle /healthz {
+        reverse_proxy frontend:80 {
+            rewrite /api/health
+        }
+    }
+
+    # Optional: very rough rate limit. Uncomment after installing the
+    # `caddy-rate-limit` plugin (Caddy doesn't ship one in the official image).
+    # rate_limit {
+    #     zone token_bucket {
+    #         key    {client_ip}
+    #         events 60
+    #         window 60s
+    #     }
+    # }
+
+    log {
+        output stdout
+        format json
+        level  INFO
+    }
+}

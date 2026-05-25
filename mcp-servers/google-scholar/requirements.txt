@@ -1,0 +1,4 @@
+mcp[cli]>=1.4.1
+scholarly>=1.7.0
+requests>=2.28.0
+beautifulsoup4>=4.12.0

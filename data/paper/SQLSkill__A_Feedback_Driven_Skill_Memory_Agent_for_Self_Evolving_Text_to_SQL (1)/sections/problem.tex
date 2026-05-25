@@ -1,0 +1,125 @@
+% sections/problem.tex
+
+\section{Problem Formulation}
+\label{sec:problem}
+
+\subsection{Definitions}
+\label{subsec:definitions}
+
+\textbf{SQL Skill.} A Skill is defined as a five-tuple:
+\begin{equation}
+  \text{Skill}_k = \langle \tau_k,\; \pi_k,\; \mathcal{C}_k,\; \delta_k,\; p_k \rangle
+  \label{eq:skill_def}
+\end{equation}
+where $\tau_k$ is the \emph{trigger condition} (query features that activate this Skill);
+$\pi_k$ is the \emph{workflow procedure} (execution steps, SQL templates, or error-avoidance procedures);
+$\mathcal{C}_k$ is the \emph{applicable context} (schema features, dialect, query types);
+$\delta_k$ is the \emph{supporting evidence} (Case IDs in the Case Library);
+and $p_k \in \{+, -\}$ is the \emph{polarity marker} ($+$: constructive, $-$: Anti-Pattern).
+
+For Anti-Pattern Skills ($p_k = -$), the workflow has dual structure $\pi_k = \langle \pi_k^{\text{anti}}, \pi_k^{\text{corr}} \rangle$: the pattern to avoid and a suggested correction. Each Skill additionally maintains runtime statistics for lifecycle management: retrieval count $u_k$, cumulative counterfactual gain $G_k$, normalized gain rate $\hat{g}_k = G_k / (u_k + \epsilon_{\text{cf}})$, and minimum source evidence level $\ell_k^{\min}$.
+
+\textbf{Case.} A Case is an eight-tuple:
+\begin{align}
+  \text{Case}_j = \langle\, &q_j,\; s_j,\; c_j,\; r_j, \notag \\
+  &f_j,\; \text{out}_j,\; \ell_j,\; \mathcal{E}_j \,\rangle
+  \label{eq:case_def}
+\end{align}
+where $q_j$ is the natural language question, $s_j$ the relevant schema, $c_j$ the generated SQL, $r_j$ the execution result, $f_j$ the error message (empty if successful), $\text{out}_j \in \{\text{success}, \text{failure}, \text{partial}\}$ the outcome, $\ell_j \in \{L_0, L_1, L_2, L_3\}$ the evidence grade, and $\mathcal{E}_j$ the evidence set recording verification sources.
+
+\textbf{Evidence grades} follow a monotonically non-decreasing promotion ladder:
+\begin{itemize}[nosep]
+  \item $L_0$ (\emph{Observed}): First entry upon execution feedback. Statistics only.
+  \item $L_1$ (\emph{Recurrent}): Same error signature recurs $\geq N_{\text{recur}}$ times. Enables exploratory distillation.
+  \item $L_2$ (\emph{Verified}): Execution or GT verification obtained. Enables governance distillation.
+  \item $L_3$ (\emph{Governance}): Verified and Skill Bank conflict check passed. Enables direct Skill Bank update.
+\end{itemize}
+
+\begin{figure}[t]
+  \centering
+  \fbox{\parbox{0.95\columnwidth}{\centering\vspace{2cm}
+  \textbf{[Figure 2: Evidence-Graded Knowledge Flow --- To be drawn]}\\[6pt]
+  \small\textit{Design specification:}\\[3pt]
+  \textbf{Layout:} Vertical ladder (bottom to top) showing L0$\to$L1$\to$L2$\to$L3 promotion.\\[3pt]
+  \textbf{Left column (promotion conditions):} Between each level, annotate the gate:\\
+  L0$\to$L1: ``same signature recurs $\geq N_{\text{recur}}$ times''\\
+  L1$\to$L2: ``execution verification or GT comparison''\\
+  L2$\to$L3: ``conflict check against existing Skills passed''\\[3pt]
+  \textbf{Right column (allowed influence):} At L1 level, a dashed branch arrow pointing right to ``Exploratory Distillation $\to$ EHR (soft hints, unverified).'' At L2 level, a solid branch arrow pointing right to ``Governance Distillation $\to$ Skill Bank (permanent write).''\\[3pt]
+  \textbf{Visual cues:} Increasing shade intensity from L0 (lightest) to L3 (darkest). Failed cases enter at L0 (bottom); successful Skill writes exit at top-right.
+  EHR branch shown with dashed line and ``expires after $T_{\text{ehr}}$'' annotation.
+  \vspace{2cm}}}
+  \caption{Evidence-graded knowledge promotion and dual-track distillation. Cases enter at L0 and are promoted through increasingly stringent gates.
+  The exploratory track produces temporary hints from weaker evidence (L1+), while the governance track requires strong evidence (L2+) before writing to the Skill Bank.}
+  \label{fig:evidence_flow}
+\end{figure}
+
+Figure~\ref{fig:evidence_flow} illustrates the promotion ladder and the two distillation tracks. The key design principle is that write access to the Skill Bank is earned through accumulated evidence, not granted after a single observation.
+
+\textbf{Error dimensions.} We define four independent semantic dimensions for tracking SQL generation errors: \emph{Data Table} ($D_{\text{tab}}$, correct table selection), \emph{Field} ($D_{\text{fld}}$, correct field reference), \emph{Relation} ($D_{\text{rel}}$, correct inter-table relations), and \emph{Filtering} ($D_{\text{flt}}$, correct predicates and boundaries). Let $\mathcal{D} = \{D_{\text{tab}}, D_{\text{fld}}, D_{\text{rel}}, D_{\text{flt}}\}$. Each dimension is tracked independently and multiple dimensions may co-activate for a single error; we use ``independent'' in the operational sense that each dimension maintains its own signature space and recurrence statistics without cross-dimension coupling.\footnote{We do not claim statistical independence: a missing JOIN (Relation error) may induce a downstream Field error. However, each dimension has distinct pattern vocabularies, and their ERR values are computed and optimized separately.}
+
+For each failed query $q$, the agent outputs a binary error vector $\mathbf{e}(q) \in \{0,1\}^{|\mathcal{D}|}$ and, for each activated dimension $d$, an \emph{Error Signature}:
+\begin{equation}
+  z_d(q) = \langle\, \rho_d,\; \sigma_d,\; \alpha_d \,\rangle
+  \label{eq:error_sig}
+\end{equation}
+where $\rho_d$ is the \emph{pattern label} drawn from a controlled vocabulary per dimension (e.g., $\rho \in \{\text{missing\_join}, \text{wrong\_key}, \ldots\}$), $\sigma_d$ is the \emph{schema element} involved (specific table/column names), and $\alpha_d$ is the \emph{AST feature} extracted from the generated SQL's parse tree. Two signatures are equivalent ($z_d(q) \equiv z_d(q')$) when $\rho_d$ and $\alpha_d$ match, regardless of $\sigma_d$, enabling cross-database recurrence detection.
+
+\subsection{Task Definition}
+\label{subsec:task}
+
+Given a natural language question $q$, a database schema $\mathcal{S}$, and the expected execution result $r^*$, the agent generates SQL $c$ such that $\text{exec}(c, \mathcal{S}) = r^*$, where $\text{exec}(\cdot)$ denotes SQL execution on the database.
+
+Let $\mathcal{Q}^{(t)}$ denote the set of queries in batch $t$, and $\mathcal{Q}^{(<t)} = \bigcup_{\tau < t} \mathcal{Q}^{(\tau)}$ denote all historical queries before batch $t$. With three-layer memory, generation becomes:
+\begin{align}
+  &\text{Agent}^{(t)}(q, \mathcal{S}) = \notag \\
+  &\quad \text{Gen}\!\big(q, \mathcal{S},\; \text{Ret}(q, \mathcal{S}, \mathcal{B}^{(t\text{-}1)}, \mathcal{L}^{(t\text{-}1)}, \mathcal{W}^{(t)})\big)
+  \label{eq:agent}
+\end{align}
+where $\mathcal{B}^{(t-1)}$ is the Skill Bank (long-term), $\mathcal{L}^{(t-1)}$ the Case Library (mid-term), and $\mathcal{W}^{(t)}$ the Session State (short-term).\footnote{Superscript $t{-}1$ for $\mathcal{B}$/$\mathcal{L}$ reflects deferred batch updates (between batches); $t$ for $\mathcal{W}$ reflects real-time within-session updates.}
+
+\textbf{Deferred batch update} (inspired by TextGrad~\cite{yuksekgonul2024textgrad}):
+\begin{align}
+  \mathcal{B}^{(t)} = \text{Distill}\!\big(\mathcal{B}^{(t\text{-}1)},\;
+  \{(&\text{Case}_j, \ell_j) \notag \\
+  &\mid j \in \mathcal{I}^{(t)},\; \ell_j \geq L_{\min}\}\big)
+  \label{eq:distill}
+\end{align}
+where $\mathcal{I}^{(t)}$ is the batch index set of same-type cases meeting the distillation threshold, and $L_{\min}$ is the minimum evidence grade ($L_1$ for exploratory, $L_2$ for governance).
+
+\subsection{Optimization Objective}
+\label{subsec:objective}
+
+We minimize the Error Recurrence Rate (ERR) subject to maintaining execution accuracy:
+\begin{equation}
+  \min_{\mathcal{B}}\; \text{ERR}(\mathcal{B}) \quad \text{s.t.} \quad \text{EA}(\mathcal{B}) \geq \text{EA}_{\text{base}}
+  \label{eq:objective}
+\end{equation}
+
+ERR is defined per error dimension $d$ and aggregated:
+\begin{equation}
+  \text{ERR}_d^{(t)} = \frac{|\{q \in \mathcal{Q}^{(t)} : e_d(q){=}1 \wedge \exists\, q' {\in} \mathcal{Q}^{(<t)},\; z_d \equiv z_d'\}|}{|\{q \in \mathcal{Q}^{(t)} : e_d(q){=}1\}| + \epsilon}
+  \label{eq:err_d}
+\end{equation}
+\begin{equation}
+  \text{ERR}^{(t)} \!=\! \sum_{d \in \mathcal{D}} w_d \cdot \text{ERR}_d^{(t)}, \;\; w_d = \frac{n_d^{(<t)}}{\sum_{d'} n_{d'}^{(<t)}}
+  \label{eq:err_total}
+\end{equation}
+where $n_d^{(<t)}$ is the cumulative count of dimension-$d$ errors in historical batches, $\epsilon > 0$ prevents division by zero, and $z_d \equiv z_d'$ denotes error signature equivalence (Eq.~\ref{eq:error_sig}).
+
+\subsection{Research Questions}
+\label{subsec:rqs}
+
+The Skill Bank update must address two coupled sub-problems:
+
+\textbf{RQ1: Structured Skill representation and reliable distillation.}
+Given cases meeting minimum evidence grade $\mathcal{L}_{\geq L_{\min}}$, design $\text{Distill}: \mathcal{L}_{\geq L_{\min}} \to \text{Skill}_k$ such that distilled Skills satisfy:
+(a)~\emph{triggerability} (trigger matches relevant queries with high precision);
+(b)~\emph{executability} (workflow is parseable as SQL generation steps);
+(c)~\emph{polarity completeness} (positive and Anti-Pattern Skills jointly cover ``what to do'' and ``what to avoid'').
+
+\textbf{RQ2: Cross-query evidence accumulation and graded promotion.}
+Design the evidence grading function $\ell: \text{Case}_j \to \{L_0, L_1, L_2, L_3\}$ with monotonicity $\ell^{(s)} \leq \ell^{(t)}$ for $s \leq t$, such that:
+(a)~recurrence detection ($L_0 \to L_1$) requires same error signatures across $\geq N_{\text{recur}}$ queries;
+(b)~reliability verification ($L_1 \to L_2$) requires execution validation, AST diff consistency, or counterfactual evidence;
+and (c)~dual-track distillation separates exploratory updates (weak evidence, advisory) from governance updates (strong evidence, Skill Bank writes).

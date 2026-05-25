@@ -1,0 +1,7 @@
+% sections/abstract.tex
+Current Text-to-SQL agents treat each query independently and lose lessons from past failures. 
+The same schema misuses and join mistakes therefore recur across queries because agents lack cross-query memory. We propose \textbf{SQLSkill}, a feedback-driven agent built on a three-layer Skill-Memory architecture. 
+A short-term Session State supports context-aware retries; a mid-term Case Library accumulates evidence-graded episodes; and a long-term Skill Bank stores structured workflow rules distilled from recurring cases. 
+Unlike prior methods that write every failure into memory immediately, SQLSkill uses \emph{deferred batch distillation}: Skills are updated only when same-type cases reach a configurable recurrence threshold ($N_{\text{distill}}$), preventing premature generalization from noisy feedback. 
+We also introduce \emph{Anti-Pattern Skills} that encode common failure patterns, paired with a conflict resolution mechanism that manages interactions between positive and negative Skills. 
+We formalize the optimization objective as minimizing \emph{Error Recurrence Rate} (ERR) across four independent error dimensions while maintaining execution accuracy.

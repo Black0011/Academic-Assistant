@@ -1,0 +1,34 @@
+% sections/conclusion.tex
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+We presented SQLSkill, a feedback-driven Text-to-SQL agent architecture built on a three-layer Skill-Memory hierarchy. Our framework introduces four core contributions: (1)~structured SQL Skills as reusable query-type-level workflow units with explicit polarity markers; (2)~evidence-graded case accumulation (L0--L3) with four independent error dimensions enabling precise cross-query error clustering; (3)~deferred batch distillation with dual-track pipelines that avoid premature generalization from noisy single-instance feedback; and (4)~Anti-Pattern Skills coexisting with positive Skills under a conflict resolution routing mechanism exploiting LLM positional attention patterns. The counterfactual replay credit assignment provides interventional, rather than observational, evidence for Skill lifecycle management, enabling principled deprecation, merge, and refinement decisions.
+
+Together, these mechanisms target minimizing Error Recurrence Rate (ERR) while maintaining execution accuracy. By formalizing ``when to write'' (evidence-gated promotion) and ``what to write'' (structured workflow distillation), SQLSkill provides a principled path toward self-evolving Text-to-SQL systems that learn from accumulated experience.
+
+\subsection{Limitations}
+\label{subsec:limitations}
+
+Our work has several limitations that warrant discussion:
+
+\textbf{(1) Error signature reliability.} The current framework relies on LLM-generated error signatures for cross-query clustering. While constrained by controlled vocabulary lists and AST-grounded features, the clustering quality depends on the LLM's ability to consistently assign signatures, an assumption that requires empirical validation through pilot studies measuring inter-annotation agreement.
+
+\textbf{(2) Counterfactual replay cost.} The counterfactual replay mechanism requires re-executing generation with each injected Skill removed, introducing inference cost proportional to $|\mathcal{K}_{\text{cand}}|$ per query. For the default $K_{\text{skill}}=3$, this represents a 3$\times$ overhead on queries selected for credit assignment (not all queries trigger replay).
+
+\textbf{(3) Cold-start period.} Before sufficient Cases accumulate to trigger distillation, the Skill Bank remains empty and SQLSkill operates as a standard Case-retrieval agent. The cold-start period length depends on error concentration and query volume.
+
+\textbf{(4) Single-backbone assumption.} Our current design assumes a single backbone LLM for all modules (Query Analyzer, Generator, Error Analyzer, Distiller). The framework's effectiveness with heterogeneous model configurations remains unexplored.
+
+\subsection{Future Work}
+\label{subsec:future_work}
+
+Several promising directions extend this work:
+
+\textbf{Cost-efficient replay.} Investigating importance sampling strategies for counterfactual replay, selectively replaying only when Skills have low usage counts or when multiple Skills with similar triggers are injected simultaneously, could reduce computational overhead while maintaining credit assignment quality.
+
+\textbf{Multi-user Skill evolution.} Following SkillClaw's~\cite{ma2026skillclaw} direction of collective Skill evolution, extending SQLSkill to multi-tenant settings where different users' Case Libraries contribute to a shared Skill Bank could accelerate knowledge accumulation.
+
+\textbf{Enterprise-scale validation.} Evaluating on Spider 2.0's enterprise workflows (averaging 800+ columns per database) and BEAVER-scale queries (averaging 5.7 JOINs per query) would test whether the four-dimensional error tracking scales to real-world schema complexity.
+
+\textbf{Adaptive distillation thresholds.} Learning optimal $N_{\text{distill}}$ values per error dimension (rather than using fixed thresholds) based on observed error concentration patterns could improve distillation timing.

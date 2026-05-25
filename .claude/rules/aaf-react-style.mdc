@@ -1,0 +1,84 @@
+---
+description: Mandatory React 19 + TypeScript style rules for AAF frontend files
+globs:
+  - "frontend/src/**/*.ts"
+  - "frontend/src/**/*.tsx"
+alwaysApply: true
+---
+
+# AAF · React 19 & TypeScript Style Rule (MANDATORY)
+
+## Components
+
+- **Function components only.** No class components, no `React.FC` (prefer an explicit `(props: Props) =>` signature).
+- Props interfaces declared as `interface Props { ... }` (PascalCase, adjacent to the component).
+- Never declare components inside another component — causes re-mount storms.
+- Filenames: **PascalCase.tsx** (e.g. `PaperCard.tsx`). Barrel files only at module boundaries.
+- Default exports banned for stores / hooks / utilities — use named exports. Page components (routed) may use default export when required by the router.
+
+## Hooks
+
+- Custom hooks start with `use*`, live in `frontend/src/hooks/`.
+- Exhaustive deps enforced (`eslint-plugin-react-hooks` in `error` mode).
+- Derived values via `useMemo` only when a measurable cost exists; otherwise plain variables.
+- **No `useEffect` for server state** — use TanStack Query. `useEffect` is reserved for imperative DOM work, subscriptions, and cleanup.
+
+## Styling
+
+- **Tailwind CSS v4 utilities + shadcn/ui primitives.** No CSS-in-JS.
+- No free-form custom CSS in components. Theme tokens live in `src/styles/globals.css` (CSS variables) and are referenced by Tailwind.
+- Dark mode via `class="dark"` on `<html>`; shadcn tokens already flip automatically.
+- Class composition via `clsx` + `tailwind-merge` (exported as `cn` helper in `src/lib/utils.ts`).
+
+## TypeScript
+
+- `strict: true`, `noImplicitAny: true`, `exactOptionalPropertyTypes: true`, `noUncheckedIndexedAccess: true`.
+- **Never `any`** — use `unknown` and narrow. `as` casts require a preceding comment explaining why.
+- Discriminated unions for loading/error/success view states (no booleans for multi-state).
+
+## State management
+
+- **UI-only state** in Zustand; one store per feature area. Store files `useCamelCaseStore.ts`, export the hook with the same name.
+- **Server state** in TanStack Query; query keys follow `['domain', 'sub', params]` tuple convention and live in `src/api/queryKeys.ts`.
+- Never copy server state into Zustand — read from `useQuery` at component level or derive via `queryClient.getQueryData`.
+
+## Networking
+
+- All HTTP goes through `@/api/*.ts` wrappers; components consume them via `useQuery` / `useMutation`.
+- **Never** call `fetch` / `axios` directly inside a component.
+- **SSE** goes through `@/hooks/useSSE.ts` (wraps `@microsoft/fetch-event-source`). No raw `EventSource` or custom retry loops in components.
+
+## Imports
+
+- Absolute imports using `@/` prefix (configured in `vite.config.ts` and `tsconfig.json` paths).
+- Import shadcn primitives via named imports from `@/components/ui/*`.
+- Import shared types via `@/types/*`.
+
+## Routing (React Router 7)
+
+- Route tree defined in `src/routes/` using the data-router pattern (`createBrowserRouter`).
+- Lazy-load every non-shell route via `lazy: () => import('@/pages/...').then(m => ({ Component: m.default }))`.
+- Route-level loaders may run React Query prefetches but must not contain business logic.
+- Auth guards implemented as wrapper components; never mutate history inside render.
+
+## Accessibility
+
+- Native elements before ARIA — `<button>`, `<label htmlFor=>`, semantic headings.
+- Every `<img>` has `alt` (empty string for decorative).
+- Dialogs (shadcn `<Dialog>`) trap focus by default; never roll your own modal.
+- Every interactive element must be keyboard-reachable (tab order preserved, `tabIndex` only for overrides).
+
+## Testing
+
+- Vitest + `@testing-library/react` + `@testing-library/user-event`. Test file path mirrors component path under `__tests__/`.
+- Mock `@/api/*` modules and TanStack Query client; never hit backend in unit tests.
+- Snapshot tests banned except for tiny presentational primitives.
+
+## Banned
+
+- `React.createElement` in non-generated code, `React.FC`, default exports for non-page modules.
+- Class components, higher-order components.
+- CSS-in-JS libraries (styled-components, emotion, stitches).
+- `any`, `@ts-ignore` without an issue reference.
+- Vue, Vuex, Pinia, Options API, jQuery, Redux (TanStack Query + Zustand supersede).
+- Raw `EventSource` or `fetch` in components.
