@@ -29,6 +29,7 @@ from backend.memory.models import PaperCard
 
 from .base import BaseWorkflow, WorkflowContext, WorkflowOutput
 from .primitives import sequential
+from .write import _ask  # reused for LLM summarisation
 
 
 class ResearchWorkflow(BaseWorkflow):
@@ -51,6 +52,7 @@ class ResearchWorkflow(BaseWorkflow):
                     self._ingest,
                     self._evolve,
                     self._reflect,
+                    self._summarize,
                 ],
             )
         except Exception as exc:
@@ -64,11 +66,14 @@ class ResearchWorkflow(BaseWorkflow):
             )
 
         papers: list[PaperCard] = ctx.state.get("papers", [])
+        summary = ctx.state.get("summary")
         results: dict[str, Any] = {
             "query": ctx.query,
             "count": len(papers),
             "papers": [p.model_dump(mode="json") for p in papers],
         }
+        if summary:
+            results["summary"] = summary
         verdict = "ok" if papers else "empty"
         await ctx.emit(Event(EventType.TASK_END, data={"verdict": verdict, "count": len(papers)}))
         return WorkflowOutput(
@@ -325,6 +330,60 @@ class ResearchWorkflow(BaseWorkflow):
         # P12.1: reflection write is best-effort — losing it doesn't
         # invalidate the search/ingest work that already succeeded.
         await self.stage_soft(ctx, "reflect", inner)
+
+    async def _summarize(self, ctx: WorkflowContext) -> None:
+        """Generate a structured meta-summary of the entire research round.
+
+        Calls the LLM with paper titles + abstracts and asks for a
+        narrative synthesis. Best-effort via ``stage_soft``: a summary
+        failure must not invalidate the paper results already persisted.
+        The summary is a transient chat artefact — it is NOT written to
+        PaperCard or Knowledge memory.
+        """
+
+        async def inner(c: WorkflowContext) -> None:
+            papers: list[PaperCard] = c.state.get("papers", [])
+            if not papers or c.llm is None:
+                c.state["summary"] = None
+                return
+
+            paper_briefs = _format_paper_briefs(papers)
+            system = (
+                "You are a research assistant synthesising results from a "
+                "literature search. Produce a structured summary in the "
+                "same language as the user's original query. Output ONLY "
+                "valid JSON with these keys:\n"
+                '  "narrative"   — 2-3 paragraph synthesis of the research landscape\n'
+                '  "key_findings" — list of 3-6 thematic findings across papers\n'
+                '  "gaps"        — list of 2-4 gaps or open questions identified\n'
+                '  "next_steps"  — list of 2-4 recommended next actions for the researcher\n'
+            )
+            user = (
+                f"Research query: {c.query}\n\n"
+                f"Papers found ({len(papers)}):\n{paper_briefs}\n\n"
+                "Synthesise these into a structured research summary."
+            )
+            raw = await _ask(c, system=system, user=user, route="reasoning")
+            import json as _json
+
+            try:
+                parsed = _json.loads(raw)
+            except _json.JSONDecodeError:
+                parsed = {"narrative": raw, "key_findings": [], "gaps": [], "next_steps": []}
+            c.state["summary"] = parsed
+
+        await self.stage_soft(ctx, "summarize", inner)
+
+
+def _format_paper_briefs(papers: list[PaperCard]) -> str:
+    parts: list[str] = []
+    for p in papers:
+        title = p.title or "Untitled"
+        authors = ", ".join(p.authors[:3]) if p.authors else "Unknown"
+        year = f" ({p.year})" if p.year else ""
+        abstract = (p.abstract or "")[:400]
+        parts.append(f"- {title}{year} by {authors}\n  {abstract}")
+    return "\n".join(parts)
 
 
 # ---------------------------------------------------------------------------

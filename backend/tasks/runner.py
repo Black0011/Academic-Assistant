@@ -288,6 +288,7 @@ async def execute_task(task_id: str, deps: RunnerDeps) -> None:
         tools=deps.tools,
         skill_host=deps.skill_host,
         bundle=bundle_adapter,
+        manuscripts=deps.manuscripts,
         store=store,
         budget=budget,
     )

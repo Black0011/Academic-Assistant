@@ -70,6 +70,7 @@ class WorkflowContext:
     # legacy code path runs unchanged. Adapter type kept as ``Any`` for
     # the same import-cycle reason as the other slots above.
     bundle: Any | None = None
+    manuscripts: Any | None = None  # ManuscriptStore — for workflows that need to create manuscripts
     store: Any | None = None  # TaskStore — for writing waiting status
 
     budget: Budget = field(default_factory=Budget)
