@@ -93,6 +93,7 @@ type ChatMode = "consult" | "revision";
 // Entry — dispatch into picker / studio
 // ---------------------------------------------------------------------------
 
+export { ChatStudio, ChatManuscriptPicker };
 export function PaperChatPage() {
   const { manuscriptId = "" } = useParams<{ manuscriptId?: string }>();
   const [params, setParams] = useSearchParams();

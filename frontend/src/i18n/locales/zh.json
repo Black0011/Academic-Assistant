@@ -139,7 +139,11 @@
     "noManuscriptHint": "前往「研究控制台 → 写作」选择一篇稿件后打开。",
     "backToConsole": "返回控制台",
     "modeAsk": "提问",
-    "modeRewrite": "改写"
+    "modeRewrite": "改写",
+    "welcome": "学术工作台",
+    "researchAction": "学术调研",
+    "writeAction": "论文写作",
+    "recentManuscripts": "最近稿件"
   },
   "chat": {
     "title": "对话工作台",
@@ -179,6 +183,9 @@
     "modeConsultHint": "只读分析，不动文件。",
     "modeReviseHint": "会改写并写回 bundle 中的文件。",
     "composerPlaceholder": "针对所选文本提问。⌘/Ctrl + Enter 发送。",
+    "emptyHint": "学术调研或选择稿件开始写作。",
+    "researchPlaceholder": "输入研究主题或描述写作内容...",
+    "followUp": "继续追问...",
     "ask": "提问",
     "rewrite": "改写",
     "sending": "发送中…",

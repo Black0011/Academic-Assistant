@@ -139,7 +139,11 @@
     "noManuscriptHint": "Pick a manuscript in Research Console → Writing tab to open it here.",
     "backToConsole": "Back to console",
     "modeAsk": "Ask",
-    "modeRewrite": "Rewrite"
+    "modeRewrite": "Rewrite",
+    "welcome": "Academic Workbench",
+    "researchAction": "Research",
+    "writeAction": "Write",
+    "recentManuscripts": "Recent manuscripts"
   },
   "chat": {
     "title": "Paper Chat",
@@ -179,6 +183,9 @@
     "modeConsultHint": "Read-only analysis, no file change.",
     "modeReviseHint": "Rewrites the file. Bundle gets updated.",
     "composerPlaceholder": "Ask anything about the selected passage. ⌘/Ctrl + Enter to send.",
+    "emptyHint": "Research a topic or select a manuscript to start writing.",
+    "researchPlaceholder": "Research a topic or describe what to write...",
+    "followUp": "Ask a follow-up...",
     "ask": "Ask",
     "rewrite": "Rewrite",
     "sending": "Sending…",

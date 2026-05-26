@@ -15,12 +15,12 @@ import { PaperWriterPage } from "@/pages/PaperWriterPage";
 import { PlannerPage } from "@/pages/PlannerPage";
 import { ProposalsPage } from "@/pages/ProposalsPage";
 import { RegisterPage } from "@/pages/RegisterPage";
-import { ResearchConsolePage } from "@/pages/ResearchConsolePage";
 import { RevisionPage } from "@/pages/RevisionPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SkillsPage } from "@/pages/SkillsPage";
 import { TaskDetailPage } from "@/pages/TaskDetailPage";
 import { TasksPage } from "@/pages/TasksPage";
+import { UnifiedWorkbenchPage } from "@/pages/UnifiedWorkbenchPage";
 
 export const router = createBrowserRouter([
   {
@@ -35,16 +35,15 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { index: true, element: <DashboardPage /> },
-          { path: "research", element: <ResearchConsolePage /> },
+          // Research console → redirect to unified workbench
+          { path: "research", element: <Navigate to="/workbench" replace /> },
           { path: "papers", element: <ManuscriptsPage /> },
           { path: "papers/:manuscriptId", element: <PaperWriterPage /> },
-          // P12.3 — primary writing entrypoint; both /workbench and the
-          // legacy /chat point at the same component so bookmarks survive
-          // the rename. Internal links use /workbench/*.
-          { path: "workbench", element: <PaperChatPage /> },
-          { path: "workbench/:manuscriptId", element: <PaperChatPage /> },
-          { path: "chat", element: <PaperChatPage /> },
-          { path: "chat/:manuscriptId", element: <PaperChatPage /> },
+          // Unified workbench (research + writing in one conversational surface)
+          { path: "workbench", element: <UnifiedWorkbenchPage /> },
+          { path: "workbench/:manuscriptId", element: <UnifiedWorkbenchPage /> },
+          { path: "chat", element: <Navigate to="/workbench" replace /> },
+          { path: "chat/:manuscriptId", element: <Navigate to="/workbench/:manuscriptId" replace /> },
           { path: "revision", element: <RevisionPage /> },
           { path: "library", element: <KnowledgeLibraryPage /> },
           { path: "library/:docId", element: <KnowledgeLibraryPage /> },

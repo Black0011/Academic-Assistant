@@ -47,7 +47,7 @@ type NavItem = NavLinkItem | NavSection;
 
 const NAV: ReadonlyArray<NavItem> = [
   { kind: "link", to: "/", labelKey: "nav.dashboard", icon: Home, end: true },
-  { kind: "link", to: "/research", labelKey: "nav.researchConsole", icon: BookOpenText },
+  // Unified workbench — research + writing in one surface
   { kind: "link", to: "/workbench", labelKey: "nav.workbench", icon: LayoutPanelTop },
   { kind: "link", to: "/tasks", labelKey: "nav.tasks", icon: GanttChartSquare },
   { kind: "link", to: "/settings", labelKey: "nav.settings", icon: SettingsIcon },
