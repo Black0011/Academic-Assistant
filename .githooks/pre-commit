@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# AAF pre-commit gate.
+#
+# We only run the cheap mechanical check here — full `make check` belongs in
+# CI. The check completes in well under a second on a cold cache.
+#
+# Enable once per clone:
+#   git config core.hooksPath .githooks
+# or:
+#   make install-hooks
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# Skip if no relevant artefact changed — keeps quick fixups fast.
+if git diff --cached --name-only --diff-filter=ACMR | grep -E \
+    -e '^skills/.*SKILL\.md$' \
+    -e '^rules/.*\.md$' \
+    -e '^backend/(api/routers|workflows)/.*\.py$' \
+    -e '^backend/app\.py$' \
+    -e '^scripts/check_consistency\.py$' \
+    -e '^AGENTS\.md$' \
+    -e '/AGENTS\.md$' \
+    > /dev/null; then
+    echo "[aaf] running scripts/check_consistency.py"
+    if command -v uv >/dev/null 2>&1; then
+        uv run python scripts/check_consistency.py
+    else
+        python3 scripts/check_consistency.py
+    fi
+fi

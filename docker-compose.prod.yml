@@ -1,0 +1,44 @@
+# Production overlay: TLS edge via Caddy + no direct host exposure of the
+# SPA container. Compose merges this on top of `docker-compose.yml`:
+#
+#     cp deploy/caddy/Caddyfile.example deploy/caddy/Caddyfile
+#     # edit Caddyfile to set your domain + admin email
+#     cp .env.example .env
+#     # set AAF_DOMAIN=example.com  AAF_ACME_EMAIL=admin@example.com
+#     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# The base file remains usable on its own for HTTP / dev. This overlay only
+# changes networking: Caddy becomes the single externally-exposed service,
+# obtains and renews certs via Let's Encrypt, and reverse-proxies to the
+# `frontend` container's nginx (which in turn already proxies /api/* to the
+# backend with SSE-friendly buffering).
+
+services:
+  frontend:
+    # Stop exposing the SPA directly to the host — Caddy is the new ingress.
+    # Compose v2 honours `ports: []` as "no host port mappings".
+    ports: []
+    expose:
+      - "80"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_started
+    environment:
+      AAF_DOMAIN: ${AAF_DOMAIN:-localhost}
+      AAF_ACME_EMAIL: ${AAF_ACME_EMAIL:-}
+    ports:
+      - "${AAF_TLS_HTTP_PORT:-80}:80"
+      - "${AAF_TLS_HTTPS_PORT:-443}:443"
+      - "${AAF_TLS_HTTPS_PORT:-443}:443/udp"   # HTTP/3
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

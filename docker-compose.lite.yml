@@ -1,0 +1,78 @@
+# Academic Agent Framework — LITE single-container stack
+#
+# Why this exists:
+#   The default `docker-compose.yml` brings up postgres + redis + worker
+#   + minio (optional) — fine for a server, overkill for a laptop being
+#   used by exactly one person who just wants the assistant to work.
+#
+#   This file ships only `backend` + `frontend`, talking to SQLite for
+#   tasks, an in-memory task queue for ARQ-less operation, and an
+#   in-memory vector store. ./data/ on the host holds everything that
+#   needs to survive `down` → SQLite db, knowledge YAML, proposals.
+#
+# Usage:
+#   cp .env.laptop.example .env.laptop
+#   docker compose -f docker-compose.lite.yml --env-file .env.laptop up -d --build
+#   open http://localhost:8080
+#
+# Resource budget (typical macOS / Linux laptop):
+#   ~250 MB RAM, < 5% CPU idle, single backend process. Boot in ~3s.
+
+name: aaf-lite
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/backend.Dockerfile
+    image: aaf-backend:latest
+    env_file: .env.laptop
+    environment:
+      AAF_ENV: production
+      AAF_WORKDIR: /data
+      DATABASE_URL: sqlite+aiosqlite:////data/aaf.db
+      # Empty REDIS_URL keeps the in-memory session/queue backends.
+      REDIS_URL: ""
+      AAF_TASK_QUEUE_BACKEND: inmemory
+      AAF_TASK_STORE_BACKEND: sql
+      MEMORY_VECTOR_BACKEND: memory
+      MEMORY_SESSION_BACKEND: memory
+      USERS_DIR: /data/users
+      MEMORY_KNOWLEDGE_DIR: /data/knowledge
+      MEMORY_SKILLS_DIR: /data/skills
+      AAF_PROPOSALS_DIR: /data/proposals
+    volumes:
+      - ./skills:/app/skills:ro
+      - ./rules:/app/rules:ro
+      - ./data:/data
+    command:
+      - uvicorn
+      - backend.app:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - "*"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    restart: unless-stopped
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/frontend.Dockerfile
+    image: aaf-web:latest
+    restart: unless-stopped
+    depends_on:
+      backend: { condition: service_healthy }
+    ports:
+      - "${AAF_HTTP_PORT:-8080}:80"

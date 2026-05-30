@@ -1,0 +1,52 @@
+# Model routing for AAF — copy to ./config/model_routing.yaml to enable.
+#
+# When this file is absent, AAF stays on the single-provider path (the
+# `DEFAULT_LLM_PROVIDER` from .env) and `RoutingLLMProvider` is not
+# constructed at all. Drop this file in to opt into per-task routing.
+#
+# Each route inherits unspecified fields from `default`. Use
+# `api_key_env` to point at an env var name — never put live keys in
+# this committed file.
+#
+# Usage in a workflow / agent:
+#
+#   provider = ctx.llm.for_route("reasoning")
+#   async for chunk in await provider.complete(messages):
+#       ...
+#
+# Unknown route names degrade to the default provider, so it's safe to
+# call `for_route("anything")` even if the route isn't defined here.
+
+default:
+  provider: openai                       # registry name (openai-compat / anthropic / ollama / mock)
+  api_key_env: DEEPSEEK_API_KEY          # process env var that holds the key
+  base_url: https://api.deepseek.com/v1
+  model: deepseek-chat                   # cheap fast — default everywhere
+  timeout_s: 120
+
+routes:
+  # Strong reasoner for multi-step planning, evaluation, evolver,
+  # rebuttal-writing, peer-review.
+  reasoning:
+    model: deepseek-reasoner
+
+  # Explicit alias for the default — useful when a workflow wants to be
+  # explicit about choosing the cheap path (e.g. ingest / search summary).
+  fast:
+    model: deepseek-chat
+
+  # Local Ollama escape hatch — keep all data on-device when explicitly
+  # opted into (offline / private mode).
+  local:
+    provider: ollama
+    base_url: http://localhost:11434/v1
+    model: llama3.1:8b
+    api_key_env: ""                      # ollama doesn't need a key
+
+  # Anthropic for tasks where instruction-following matters most
+  # (e.g. structured rebuttal-writer with strict JSON output).
+  claude:
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    base_url: https://api.anthropic.com/v1
+    model: claude-3-5-sonnet-latest
